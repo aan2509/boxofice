@@ -15,6 +15,7 @@ export function MovieCardLink({ movie, className }: MovieCardLinkProps) {
   return (
     <Link
       href={`/movie/${movie.id}`}
+      prefetch
       className={cn(
         "group outline-none transition-transform active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-red-300",
         className,

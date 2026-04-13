@@ -57,11 +57,7 @@ const items: NavItem[] = [
 ];
 
 function shouldHideNav(pathname: string) {
-  return (
-    pathname.startsWith("/admin") ||
-    pathname.startsWith("/movie/") ||
-    pathname.startsWith("/watch/")
-  );
+  return pathname.startsWith("/admin");
 }
 
 export function MobileBottomNav() {

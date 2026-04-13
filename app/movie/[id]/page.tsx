@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { cache, Suspense } from "react";
 import { ArrowLeft, Calendar, Clapperboard, Star, Users } from "lucide-react";
 
 import { PlayButton } from "@/components/movie/play-button";
@@ -17,14 +18,14 @@ type MoviePageProps = {
   }>;
 };
 
-async function getMovieDetail(sourceUrl: string) {
+const getMovieDetail = cache(async (sourceUrl: string) => {
   try {
-    return await fetchDetail(sourceUrl);
+    return await fetchDetail(sourceUrl, { revalidate: 3600 });
   } catch (error) {
     console.error("Failed to load movie detail", error);
     return null;
   }
-}
+});
 
 function formatReleaseDate(value: string | undefined) {
   if (!value) {
@@ -44,29 +45,120 @@ function formatReleaseDate(value: string | undefined) {
   }).format(date);
 }
 
+async function MovieMetaDetails({ sourceUrl }: { sourceUrl: string }) {
+  const detail = await getMovieDetail(sourceUrl);
+  const releaseDate = formatReleaseDate(detail?.releaseDate);
+
+  if (!releaseDate) {
+    return null;
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1.5 text-sm text-neutral-300">
+      <Calendar className="size-4" />
+      {releaseDate}
+    </span>
+  );
+}
+
+async function MovieSynopsis({
+  fallbackSynopsis,
+  sourceUrl,
+}: {
+  fallbackSynopsis: string;
+  sourceUrl: string;
+}) {
+  const detail = await getMovieDetail(sourceUrl);
+  const synopsis = detail?.synopsis ?? fallbackSynopsis;
+
+  return (
+    <p className="line-clamp-5 max-w-3xl text-sm leading-6 text-neutral-200 sm:line-clamp-none sm:text-lg sm:leading-8">
+      {synopsis}
+    </p>
+  );
+}
+
+async function MovieCredits({ sourceUrl }: { sourceUrl: string }) {
+  const detail = await getMovieDetail(sourceUrl);
+  const actors = detail?.actors.slice(0, 6) ?? [];
+  const directors = detail?.directors.slice(0, 3) ?? [];
+
+  return (
+    <dl className="grid gap-5 border-t border-white/10 pt-5 sm:grid-cols-2 sm:pt-6">
+      <div>
+        <dt className="flex items-center gap-2 text-sm font-semibold text-neutral-400">
+          <Users className="size-4 text-red-400" />
+          Cast
+        </dt>
+        <dd className="mt-2 text-sm leading-6 text-neutral-200">
+          {actors.length ? actors.join(", ") : "Cast unavailable"}
+        </dd>
+      </div>
+      <div>
+        <dt className="flex items-center gap-2 text-sm font-semibold text-neutral-400">
+          <Clapperboard className="size-4 text-red-400" />
+          Director
+        </dt>
+        <dd className="mt-2 text-sm leading-6 text-neutral-200">
+          {directors.length ? directors.join(", ") : "Director unavailable"}
+        </dd>
+      </div>
+    </dl>
+  );
+}
+
+function MovieCreditsFallback() {
+  return (
+    <dl className="grid gap-5 border-t border-white/10 pt-5 sm:grid-cols-2 sm:pt-6">
+      <div>
+        <dt className="flex items-center gap-2 text-sm font-semibold text-neutral-400">
+          <Users className="size-4 text-red-400" />
+          Cast
+        </dt>
+        <dd className="mt-2 text-sm leading-6 text-neutral-500">
+          Memuat detail pemain...
+        </dd>
+      </div>
+      <div>
+        <dt className="flex items-center gap-2 text-sm font-semibold text-neutral-400">
+          <Clapperboard className="size-4 text-red-400" />
+          Director
+        </dt>
+        <dd className="mt-2 text-sm leading-6 text-neutral-500">
+          Memuat detail sutradara...
+        </dd>
+      </div>
+    </dl>
+  );
+}
+
 export default async function MoviePage({ params }: MoviePageProps) {
   const { id } = await params;
   const movie = await prisma.movie.findUnique({
     where: { id },
+    select: {
+      description: true,
+      id: true,
+      quality: true,
+      rating: true,
+      sourceUrl: true,
+      thumbnail: true,
+      title: true,
+    },
   });
 
   if (!movie) {
     notFound();
   }
 
-  const detail = await getMovieDetail(movie.sourceUrl);
-  const poster = detail?.poster ?? movie.thumbnail;
-  const synopsis =
-    detail?.synopsis ??
+  const poster = movie.thumbnail;
+  const fallbackSynopsis =
     movie.description ??
     "Synopsis is being prepared. Playback links are resolved only when you press play.";
-  const releaseDate = formatReleaseDate(detail?.releaseDate);
-  const actors = detail?.actors.slice(0, 6) ?? [];
-  const directors = detail?.directors.slice(0, 3) ?? [];
 
   return (
     <main className="min-h-screen bg-black text-white">
-      <section className="relative isolate min-h-screen overflow-hidden pb-24 sm:pb-0">
+      <section className="relative isolate min-h-screen overflow-hidden pb-36 sm:pb-0">
         {poster ? (
           <Image
             src={poster}
@@ -101,12 +193,9 @@ export default async function MoviePage({ params }: MoviePageProps) {
                   <Star className="size-4 fill-yellow-400 text-yellow-400" />
                   {movie.rating ?? "N/A"}
                 </span>
-                {releaseDate ? (
-                  <span className="inline-flex items-center gap-1.5 text-sm text-neutral-300">
-                    <Calendar className="size-4" />
-                    {releaseDate}
-                  </span>
-                ) : null}
+                <Suspense fallback={null}>
+                  <MovieMetaDetails sourceUrl={movie.sourceUrl} />
+                </Suspense>
               </div>
 
               <div>
@@ -118,9 +207,18 @@ export default async function MoviePage({ params }: MoviePageProps) {
                 </h1>
               </div>
 
-              <p className="line-clamp-5 max-w-3xl text-sm leading-6 text-neutral-200 sm:line-clamp-none sm:text-lg sm:leading-8">
-                {synopsis}
-              </p>
+              <Suspense
+                fallback={
+                  <p className="line-clamp-5 max-w-3xl text-sm leading-6 text-neutral-200 sm:line-clamp-none sm:text-lg sm:leading-8">
+                    {fallbackSynopsis}
+                  </p>
+                }
+              >
+                <MovieSynopsis
+                  sourceUrl={movie.sourceUrl}
+                  fallbackSynopsis={fallbackSynopsis}
+                />
+              </Suspense>
 
               <div className="hidden flex-wrap gap-3 sm:flex">
                 <PlayButton movieId={movie.id} />
@@ -136,28 +234,9 @@ export default async function MoviePage({ params }: MoviePageProps) {
                 </Button>
               </div>
 
-              <dl className="grid gap-5 border-t border-white/10 pt-5 sm:grid-cols-2 sm:pt-6">
-                <div>
-                  <dt className="flex items-center gap-2 text-sm font-semibold text-neutral-400">
-                    <Users className="size-4 text-red-400" />
-                    Cast
-                  </dt>
-                  <dd className="mt-2 text-sm leading-6 text-neutral-200">
-                    {actors.length ? actors.join(", ") : "Cast unavailable"}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="flex items-center gap-2 text-sm font-semibold text-neutral-400">
-                    <Clapperboard className="size-4 text-red-400" />
-                    Director
-                  </dt>
-                  <dd className="mt-2 text-sm leading-6 text-neutral-200">
-                    {directors.length
-                      ? directors.join(", ")
-                      : "Director unavailable"}
-                  </dd>
-                </div>
-              </dl>
+              <Suspense fallback={<MovieCreditsFallback />}>
+                <MovieCredits sourceUrl={movie.sourceUrl} />
+              </Suspense>
             </div>
 
             <aside className="hidden lg:block">
@@ -184,8 +263,10 @@ export default async function MoviePage({ params }: MoviePageProps) {
           </div>
         </div>
       </section>
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-black/90 px-4 py-3 backdrop-blur sm:hidden">
-        <PlayButton movieId={movie.id} />
+      <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+5rem)] z-30 px-4 py-3 sm:hidden">
+        <div className="rounded-[14px] border border-white/10 bg-black/90 p-2 backdrop-blur">
+          <PlayButton movieId={movie.id} />
+        </div>
       </div>
     </main>
   );

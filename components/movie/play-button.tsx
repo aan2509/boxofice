@@ -14,6 +14,10 @@ export function PlayButton({ movieId }: PlayButtonProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = React.useState(false);
 
+  React.useEffect(() => {
+    router.prefetch(`/watch/${movieId}`);
+  }, [movieId, router]);
+
   function play() {
     setIsLoading(true);
     router.push(`/watch/${movieId}`);

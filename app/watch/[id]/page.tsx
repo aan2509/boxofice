@@ -17,40 +17,41 @@ type WatchPageProps = {
 };
 
 async function getWatchData(id: string) {
-  const movie = await prisma.movie.findUnique({
-    where: { id },
-    select: {
-      id: true,
-      title: true,
-      thumbnail: true,
-      description: true,
-      rating: true,
-      quality: true,
-    },
-  });
+  const [movie, recommendations] = await Promise.all([
+    prisma.movie.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        title: true,
+        thumbnail: true,
+        description: true,
+        rating: true,
+        quality: true,
+      },
+    }),
+    prisma.movie.findMany({
+      where: {
+        id: {
+          not: id,
+        },
+      },
+      orderBy: {
+        updatedAt: "desc",
+      },
+      take: 12,
+      select: {
+        id: true,
+        title: true,
+        thumbnail: true,
+        rating: true,
+        quality: true,
+      },
+    }),
+  ]);
 
   if (!movie) {
     return null;
   }
-
-  const recommendations = await prisma.movie.findMany({
-    where: {
-      id: {
-        not: id,
-      },
-    },
-    orderBy: {
-      updatedAt: "desc",
-    },
-    take: 12,
-    select: {
-      id: true,
-      title: true,
-      thumbnail: true,
-      rating: true,
-      quality: true,
-    },
-  });
 
   return { movie, recommendations };
 }
@@ -132,6 +133,7 @@ export default async function WatchPage({ params }: WatchPageProps) {
                   <Link
                     key={item.id}
                     href={`/movie/${item.id}`}
+                    prefetch
                     className="group grid grid-cols-[72px_minmax(0,1fr)] gap-3 rounded-md bg-white/5 p-2 ring-1 ring-white/10 transition-colors hover:bg-white/10"
                   >
                     <div className="relative aspect-[2/3] overflow-hidden rounded-md bg-neutral-900">
@@ -175,6 +177,7 @@ export default async function WatchPage({ params }: WatchPageProps) {
             <Link
               key={item.id}
               href={`/movie/${item.id}`}
+              prefetch
               className="group w-[132px] shrink-0 outline-none transition-transform active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-red-300 sm:w-auto sm:hover:-translate-y-1"
             >
               <div className="relative aspect-[2/3] overflow-hidden rounded-md bg-neutral-900 shadow-xl shadow-black/40 ring-1 ring-white/10">

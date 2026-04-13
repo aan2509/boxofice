@@ -359,9 +359,17 @@ export async function fetchNew(page = 1): Promise<MovieListResult> {
   return normalizeMovieListResponse(response);
 }
 
-export async function fetchDetail(sourceUrl: string): Promise<MovieDetail> {
+export async function fetchDetail(
+  sourceUrl: string,
+  options: { revalidate?: number } = {},
+): Promise<MovieDetail> {
   const response = await requestJson<unknown>(
     `/lk21/detail?url=${encodeURIComponent(sourceUrl)}`,
+    {
+      next: {
+        revalidate: options.revalidate ?? 3600,
+      },
+    },
   );
   const root = isRecord(response) ? response : {};
   const data = isRecord(root.data) ? root.data : root;

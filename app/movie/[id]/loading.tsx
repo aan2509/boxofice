@@ -54,8 +54,10 @@ export default function Loading() {
           </div>
         </div>
       </section>
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-black/90 px-4 py-3 backdrop-blur sm:hidden">
-        <Skeleton className="h-12 w-full bg-red-500/25" />
+      <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+5rem)] z-30 px-4 py-3 sm:hidden">
+        <div className="rounded-[14px] border border-white/10 bg-black/90 p-2 backdrop-blur">
+          <Skeleton className="h-12 w-full bg-red-500/25" />
+        </div>
       </div>
     </main>
   );
