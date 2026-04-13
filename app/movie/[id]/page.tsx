@@ -83,7 +83,7 @@ export default async function MoviePage({ params }: MoviePageProps) {
 
         <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-4 sm:px-8 sm:py-6 lg:px-10">
           <Button asChild variant="ghost" className="w-fit">
-            <Link href="/">
+            <Link href="/" prefetch>
               <ArrowLeft className="size-4" />
               Back
             </Link>
@@ -130,7 +130,9 @@ export default async function MoviePage({ params }: MoviePageProps) {
                   variant="secondary"
                   className="h-12 border border-white/10 bg-white/10 px-7 text-white hover:bg-white/15"
                 >
-                  <Link href="/">Browse more</Link>
+                  <Link href="/" prefetch>
+                    Browse more
+                  </Link>
                 </Button>
               </div>
 

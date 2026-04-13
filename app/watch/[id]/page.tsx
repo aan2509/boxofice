@@ -90,7 +90,7 @@ export default async function WatchPage({ params }: WatchPageProps) {
               </Link>
             </Button>
             <Button asChild variant="ghost">
-              <Link href="/">
+              <Link href="/" prefetch>
                 <Info className="size-4" />
                 Browse
               </Link>

@@ -44,7 +44,7 @@ export default async function BrowsePage({ params }: BrowsePageProps) {
 
         <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-8 pt-6 sm:px-8 sm:pb-10 lg:px-10">
           <Button asChild variant="ghost" className="w-fit">
-            <Link href="/">
+            <Link href="/" prefetch>
               <ArrowLeft className="size-4" />
               Kembali ke beranda
             </Link>
