@@ -46,7 +46,7 @@ export default async function ProfilePasswordPage() {
 
         <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(18,18,18,0.82),rgba(8,8,8,0.95))] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.5)] backdrop-blur-xl">
           <span className="inline-flex rounded-full border border-red-400/20 bg-red-500/10 px-3 py-1 text-xs font-semibold text-red-200">
-            Security
+            Keamanan
           </span>
           <h1 className="mt-4 text-4xl font-black leading-none text-white">
             Ganti Password

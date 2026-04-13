@@ -81,7 +81,7 @@ export default async function Home() {
             <div className="max-w-3xl">
               <p className="text-sm font-semibold text-red-400">Box Office</p>
               <h1 className="mt-3 text-4xl font-black leading-none text-white sm:mt-4 sm:text-6xl lg:text-7xl">
-                {featured?.title ?? "Netflix-style library, powered by LK21"}
+                {featured?.title ?? "Koleksi film siap menemani waktumu"}
               </h1>
               <div className="mt-6 flex flex-wrap items-center gap-3 sm:mt-7">
                 {featured ? (

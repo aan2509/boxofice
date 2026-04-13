@@ -17,10 +17,10 @@ export default async function LoginPage() {
 
   return (
     <AuthShell
-      badge="User account"
+      badge="Akun pengguna"
       backdropMovies={backdropMovies}
-      title="Sign in"
-      description="Masuk untuk mulai menonton drama favoritmu."
+      title="Masuk"
+      description="Lanjutkan tontonan favoritmu dari akun yang sama."
     >
       <UserLoginForm />
     </AuthShell>

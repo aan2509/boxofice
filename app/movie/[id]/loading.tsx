@@ -13,7 +13,7 @@ export default function Loading() {
           <Button asChild variant="ghost" className="w-fit">
             <Link href="/">
               <ArrowLeft className="size-4" />
-              Back
+              Kembali
             </Link>
           </Button>
 

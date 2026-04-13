@@ -13,13 +13,13 @@ export default function Loading() {
             <Button asChild variant="ghost">
               <Link href="/">
                 <ArrowLeft className="size-4" />
-                Details
+                Detail
               </Link>
             </Button>
             <Button asChild variant="ghost">
               <Link href="/">
                 <Info className="size-4" />
-                Browse
+                Beranda
               </Link>
             </Button>
           </div>

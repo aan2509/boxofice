@@ -7,7 +7,8 @@ export default function AffiliatePage() {
           Program affiliate siap ditambahkan
         </h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-neutral-400">
-          Halaman ini nanti bisa diisi referral link, komisi, dan panduan promosi.
+          Nanti halaman ini bisa berisi tautan referral, ringkasan komisi, dan
+          panduan promosi yang mudah diikuti.
         </p>
       </section>
     </main>

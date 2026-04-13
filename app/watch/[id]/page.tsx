@@ -87,13 +87,13 @@ export default async function WatchPage({ params }: WatchPageProps) {
             <Button asChild variant="ghost">
               <Link href={`/movie/${movie.id}`}>
                 <ArrowLeft className="size-4" />
-                Details
+                Detail
               </Link>
             </Button>
             <Button asChild variant="ghost">
               <Link href="/" prefetch>
                 <Info className="size-4" />
-                Browse
+                Beranda
               </Link>
             </Button>
           </div>
@@ -119,14 +119,14 @@ export default async function WatchPage({ params }: WatchPageProps) {
                 </h1>
                 <p className="max-w-3xl text-sm leading-6 text-neutral-300">
                   {movie.description ??
-                    "Choose a quality, press play, and keep watching. More titles are waiting below."}
+                    "Pilih kualitas yang nyaman, tekan play, lalu lanjutkan tontonanmu."}
                 </p>
               </div>
             </div>
 
             <aside className="hidden lg:block">
               <p className="mb-3 text-sm font-semibold text-neutral-300">
-                Up next
+                Berikutnya
               </p>
               <div className="space-y-3">
                 {recommendations.slice(0, 5).map((item) => (
@@ -153,7 +153,7 @@ export default async function WatchPage({ params }: WatchPageProps) {
                         {item.title}
                       </p>
                       <p className="mt-2 text-xs text-neutral-400">
-                        {item.quality ?? "Movie"} · {item.rating ?? "N/A"}
+                        {item.quality ?? "Film"} · {item.rating ?? "N/A"}
                       </p>
                     </div>
                   </Link>
@@ -166,9 +166,11 @@ export default async function WatchPage({ params }: WatchPageProps) {
 
       <section className="mx-auto w-full max-w-7xl px-4 py-7 sm:px-8 sm:py-9 lg:px-10">
         <div className="mb-4 sm:mb-5">
-          <p className="text-sm font-semibold text-red-400">More like this</p>
+          <p className="text-sm font-semibold text-red-400">
+            Rekomendasi untukmu
+          </p>
           <h2 className="mt-1 text-xl font-bold text-white sm:text-2xl">
-            Keep watching
+            Lanjut pilih tontonan
           </h2>
         </div>
 
@@ -192,7 +194,7 @@ export default async function WatchPage({ params }: WatchPageProps) {
                   />
                 ) : (
                   <div className="flex h-full items-center justify-center px-3 text-center text-sm text-neutral-400">
-                    Poster unavailable
+                    Poster belum tersedia
                   </div>
                 )}
 

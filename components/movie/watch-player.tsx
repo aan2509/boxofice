@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { RefreshCw } from "lucide-react";
+import { RotateCcw, RotateCw } from "lucide-react";
 import type Player from "video.js/dist/types/player";
 
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,25 @@ type WatchPlayerProps = {
   poster?: string | null;
 };
 
+type SeekFeedback = {
+  direction: "backward" | "forward";
+  key: number;
+};
+
+type OrientationLockValue =
+  | "any"
+  | "landscape"
+  | "landscape-primary"
+  | "landscape-secondary"
+  | "natural"
+  | "portrait"
+  | "portrait-primary"
+  | "portrait-secondary";
+
+type ScreenOrientationWithLock = ScreenOrientation & {
+  lock?: (orientation: OrientationLockValue) => Promise<void>;
+};
+
 function isHlsSource(source: CachedStreamSource) {
   return (
     source.type === "application/x-mpegURL" ||
@@ -30,7 +49,8 @@ function isHlsSource(source: CachedStreamSource) {
 }
 
 function toVideoJsSource(source: CachedStreamSource) {
-  const type = source.type ?? (isHlsSource(source) ? "application/x-mpegURL" : "video/mp4");
+  const type =
+    source.type ?? (isHlsSource(source) ? "application/x-mpegURL" : "video/mp4");
 
   return {
     src:
@@ -41,15 +61,33 @@ function toVideoJsSource(source: CachedStreamSource) {
   };
 }
 
+async function lockLandscapeIfPossible() {
+  const orientation = screen.orientation as ScreenOrientationWithLock | undefined;
+
+  if (!orientation?.lock) {
+    return;
+  }
+
+  await orientation.lock("landscape").catch(() => undefined);
+}
+
+function unlockOrientationIfPossible() {
+  screen.orientation?.unlock?.();
+}
+
 export function WatchPlayer({ movieId, poster }: WatchPlayerProps) {
   const videoRef = React.useRef<HTMLVideoElement | null>(null);
   const playerRef = React.useRef<PlayerWithQualitySelector | null>(null);
+  const lastTapRef = React.useRef<{ time: number; x: number } | null>(null);
   const [stream, setStream] = React.useState<CachedStreamResponse | null>(() =>
     readCachedStream(movieId),
   );
   const [error, setError] = React.useState<string | null>(null);
   const [selectedSourceUrl, setSelectedSourceUrl] = React.useState<string | null>(
     readCachedStream(movieId)?.sources[0]?.url ?? null,
+  );
+  const [seekFeedback, setSeekFeedback] = React.useState<SeekFeedback | null>(
+    null,
   );
   const [retryCount, setRetryCount] = React.useState(0);
 
@@ -86,7 +124,7 @@ export function WatchPlayer({ movieId, poster }: WatchPlayerProps) {
         setError(
           loadError instanceof Error
             ? loadError.message
-            : "Unable to open the player.",
+            : "Pemutar belum bisa dibuka sekarang.",
         );
       }
     }
@@ -135,6 +173,17 @@ export function WatchPlayer({ movieId, poster }: WatchPlayerProps) {
       player.ready(() => {
         player.hlsQualitySelector?.({ displayCurrentQuality: true });
       });
+
+      const handleFullscreenChange = () => {
+        if (player.isFullscreen()) {
+          void lockLandscapeIfPossible();
+          return;
+        }
+
+        unlockOrientationIfPossible();
+      };
+
+      player.on("fullscreenchange", handleFullscreenChange);
     }
 
     setupPlayer();
@@ -142,9 +191,90 @@ export function WatchPlayer({ movieId, poster }: WatchPlayerProps) {
     return () => {
       disposed = true;
       playerRef.current?.dispose();
+      unlockOrientationIfPossible();
       playerRef.current = null;
     };
   }, [poster, selectedSource, sources]);
+
+  React.useEffect(() => {
+    if (!seekFeedback) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => setSeekFeedback(null), 650);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [seekFeedback]);
+
+  function seekBy(seconds: number) {
+    const player = playerRef.current;
+
+    if (!player) {
+      return;
+    }
+
+    const currentTime = player.currentTime() ?? 0;
+    const duration = player.duration();
+    const maxTime =
+      typeof duration === "number" && Number.isFinite(duration)
+        ? Math.max(duration - 1, 0)
+        : Infinity;
+    const nextTime = Math.max(
+      0,
+      Math.min(currentTime + seconds, maxTime),
+    );
+
+    player.currentTime(nextTime);
+    setSeekFeedback({
+      direction: seconds < 0 ? "backward" : "forward",
+      key: Date.now(),
+    });
+  }
+
+  function handlePointerDoubleTap(clientX: number, width: number) {
+    const isLeftSide = clientX < width / 2;
+    seekBy(isLeftSide ? -10 : 10);
+  }
+
+  function handleDoubleClick(event: React.MouseEvent<HTMLDivElement>) {
+    const target = event.target as HTMLElement;
+
+    if (target.closest(".vjs-control-bar, button")) {
+      return;
+    }
+
+    const bounds = event.currentTarget.getBoundingClientRect();
+    handlePointerDoubleTap(event.clientX - bounds.left, bounds.width);
+  }
+
+  function handleTouchEnd(event: React.TouchEvent<HTMLDivElement>) {
+    const target = event.target as HTMLElement;
+
+    if (target.closest(".vjs-control-bar, button")) {
+      return;
+    }
+
+    const touch = event.changedTouches[0];
+
+    if (!touch) {
+      return;
+    }
+
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const x = touch.clientX - bounds.left;
+    const now = Date.now();
+    const lastTap = lastTapRef.current;
+
+    if (lastTap && now - lastTap.time < 280 && Math.abs(lastTap.x - x) < 80) {
+      handlePointerDoubleTap(x, bounds.width);
+      lastTapRef.current = null;
+      return;
+    }
+
+    lastTapRef.current = { time: now, x };
+  }
 
   function selectSource(source: CachedStreamSource) {
     if (!playerRef.current) {
@@ -168,10 +298,28 @@ export function WatchPlayer({ movieId, poster }: WatchPlayerProps) {
 
   if (!stream && !error) {
     return (
-      <div className="flex aspect-video w-full items-center justify-center rounded-md bg-neutral-950 text-neutral-300 ring-1 ring-white/10">
-        <div className="flex flex-col items-center gap-4">
-          <RefreshCw className="size-7 animate-spin text-red-500" />
-          <p>Preparing direct stream</p>
+      <div className="relative flex aspect-video w-full overflow-hidden rounded-md bg-neutral-950 text-neutral-200 ring-1 ring-white/10">
+        {poster ? (
+          <div
+            className="absolute inset-0 scale-105 bg-cover bg-center opacity-20 blur-sm"
+            style={{ backgroundImage: `url(${poster})` }}
+          />
+        ) : null}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(220,38,38,0.22),transparent_28%),linear-gradient(180deg,rgba(0,0,0,0.45),rgba(0,0,0,0.9))]" />
+        <div className="relative z-10 flex w-full flex-col items-center justify-center px-6 text-center">
+          <div className="relative flex size-16 items-center justify-center rounded-full bg-red-600/10 ring-1 ring-red-400/20">
+            <div className="absolute inset-1 rounded-full border border-red-500/20" />
+            <div className="size-9 animate-spin rounded-full border-2 border-red-500/25 border-t-red-500" />
+          </div>
+          <p className="mt-5 text-base font-semibold text-white">
+            Menyiapkan tontonanmu
+          </p>
+          <p className="mt-2 max-w-sm text-sm leading-6 text-neutral-400">
+            Kami sedang mengambil link video terbaik. Biasanya hanya sebentar.
+          </p>
+          <div className="mt-5 h-1.5 w-44 overflow-hidden rounded-full bg-white/10">
+            <div className="h-full w-1/2 animate-pulse rounded-full bg-red-500" />
+          </div>
         </div>
       </div>
     );
@@ -180,11 +328,13 @@ export function WatchPlayer({ movieId, poster }: WatchPlayerProps) {
   if (error) {
     return (
       <div className="flex aspect-video w-full flex-col items-center justify-center gap-4 rounded-md bg-neutral-950 px-6 text-center ring-1 ring-white/10">
-        <p className="text-2xl font-semibold text-white">Player unavailable</p>
-        <p className="max-w-md text-sm leading-6 text-neutral-400">{error}</p>
+        <p className="text-2xl font-semibold text-white">Video belum siap</p>
+        <p className="max-w-md text-sm leading-6 text-neutral-400">
+          {error}
+        </p>
         <Button onClick={() => setRetryCount((value) => value + 1)}>
-          <RefreshCw className="size-4" />
-          Try again
+          <RotateCw className="size-4" />
+          Coba lagi
         </Button>
       </div>
     );
@@ -192,13 +342,37 @@ export function WatchPlayer({ movieId, poster }: WatchPlayerProps) {
 
   return (
     <div className="space-y-3">
-      <div data-vjs-player className="overflow-hidden bg-black ring-1 ring-white/10 sm:rounded-md">
+      <div
+        data-vjs-player
+        onDoubleClick={handleDoubleClick}
+        onTouchEnd={handleTouchEnd}
+        className="relative overflow-hidden bg-black ring-1 ring-white/10 sm:rounded-md"
+      >
         <video
           ref={videoRef}
           className="video-js vjs-big-play-centered"
           playsInline
           controls
         />
+        {seekFeedback ? (
+          <div
+            key={seekFeedback.key}
+            className={cn(
+              "pointer-events-none absolute inset-y-0 flex w-1/2 items-center justify-center bg-black/15 text-white",
+              seekFeedback.direction === "backward" ? "left-0" : "right-0",
+            )}
+          >
+            <div className="flex size-20 animate-ping items-center justify-center rounded-full bg-white/10" />
+            <div className="absolute flex items-center gap-2 rounded-full bg-black/55 px-4 py-2 text-sm font-semibold backdrop-blur">
+              {seekFeedback.direction === "backward" ? (
+                <RotateCcw className="size-5" />
+              ) : (
+                <RotateCw className="size-5" />
+              )}
+              {seekFeedback.direction === "backward" ? "-10 detik" : "+10 detik"}
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {sources.length > 1 ? (

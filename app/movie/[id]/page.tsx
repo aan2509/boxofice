@@ -88,19 +88,19 @@ async function MovieCredits({ sourceUrl }: { sourceUrl: string }) {
       <div>
         <dt className="flex items-center gap-2 text-sm font-semibold text-neutral-400">
           <Users className="size-4 text-red-400" />
-          Cast
+          Pemeran
         </dt>
         <dd className="mt-2 text-sm leading-6 text-neutral-200">
-          {actors.length ? actors.join(", ") : "Cast unavailable"}
+          {actors.length ? actors.join(", ") : "Pemeran belum tersedia"}
         </dd>
       </div>
       <div>
         <dt className="flex items-center gap-2 text-sm font-semibold text-neutral-400">
           <Clapperboard className="size-4 text-red-400" />
-          Director
+          Sutradara
         </dt>
         <dd className="mt-2 text-sm leading-6 text-neutral-200">
-          {directors.length ? directors.join(", ") : "Director unavailable"}
+          {directors.length ? directors.join(", ") : "Sutradara belum tersedia"}
         </dd>
       </div>
     </dl>
@@ -113,7 +113,7 @@ function MovieCreditsFallback() {
       <div>
         <dt className="flex items-center gap-2 text-sm font-semibold text-neutral-400">
           <Users className="size-4 text-red-400" />
-          Cast
+          Pemeran
         </dt>
         <dd className="mt-2 text-sm leading-6 text-neutral-500">
           Memuat detail pemain...
@@ -122,7 +122,7 @@ function MovieCreditsFallback() {
       <div>
         <dt className="flex items-center gap-2 text-sm font-semibold text-neutral-400">
           <Clapperboard className="size-4 text-red-400" />
-          Director
+          Sutradara
         </dt>
         <dd className="mt-2 text-sm leading-6 text-neutral-500">
           Memuat detail sutradara...
@@ -154,7 +154,7 @@ export default async function MoviePage({ params }: MoviePageProps) {
   const poster = movie.thumbnail;
   const fallbackSynopsis =
     movie.description ??
-    "Synopsis is being prepared. Playback links are resolved only when you press play.";
+    "Sinopsis belum tersedia. Video akan disiapkan otomatis saat kamu menekan tombol tonton.";
 
   return (
     <main className="min-h-screen bg-black text-white">
@@ -177,7 +177,7 @@ export default async function MoviePage({ params }: MoviePageProps) {
           <Button asChild variant="ghost" className="w-fit">
             <Link href="/" prefetch>
               <ArrowLeft className="size-4" />
-              Back
+              Kembali
             </Link>
           </Button>
 
@@ -200,7 +200,7 @@ export default async function MoviePage({ params }: MoviePageProps) {
 
               <div>
                 <p className="mb-3 text-sm font-semibold uppercase text-red-400">
-                  Now Streaming
+                  Siap ditonton
                 </p>
                 <h1 className="max-w-4xl text-4xl font-black leading-none text-white sm:text-6xl lg:text-7xl">
                   {movie.title}
@@ -229,7 +229,7 @@ export default async function MoviePage({ params }: MoviePageProps) {
                   className="h-12 border border-white/10 bg-white/10 px-7 text-white hover:bg-white/15"
                 >
                   <Link href="/" prefetch>
-                    Browse more
+                    Jelajahi lagi
                   </Link>
                 </Button>
               </div>
@@ -254,7 +254,7 @@ export default async function MoviePage({ params }: MoviePageProps) {
                     />
                   ) : (
                     <div className="flex h-full items-center justify-center px-4 text-center text-sm text-neutral-400">
-                      Poster unavailable
+                      Poster belum tersedia
                     </div>
                   )}
                 </div>

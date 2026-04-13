@@ -33,7 +33,7 @@ export function MovieCardLink({ movie, className }: MovieCardLinkProps) {
           />
         ) : (
           <div className="flex h-full items-center justify-center px-3 text-center text-sm text-neutral-400">
-            Poster unavailable
+            Poster belum tersedia
           </div>
         )}
 
@@ -57,7 +57,7 @@ export function MovieCardLink({ movie, className }: MovieCardLinkProps) {
           </span>
           <span className="inline-flex items-center gap-1 font-medium text-red-300">
             <Play className="size-3.5 fill-current" />
-            Detail
+            Lihat
           </span>
         </div>
       </div>

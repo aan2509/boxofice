@@ -7,7 +7,8 @@ export default function LibraryPage() {
           Koleksi akan kita isi berikutnya
         </h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-neutral-400">
-          Slot ini sudah siap untuk daftar koleksi, pustaka kategori, atau rak personal.
+          Menu ini sudah siap untuk rak pribadi, daftar kategori, atau tontonan
+          yang ingin kamu simpan.
         </p>
       </section>
     </main>

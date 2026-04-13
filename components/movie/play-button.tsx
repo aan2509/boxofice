@@ -61,7 +61,7 @@ export function PlayButton({ movieId }: PlayButtonProps) {
       ) : (
         <Play className="size-5 fill-current" />
       )}
-      {isLoading ? "Opening player" : "Play"}
+      {isLoading ? "Membuka..." : "Tonton"}
     </Button>
   );
 }
