@@ -43,6 +43,10 @@ type ScreenOrientationWithLock = ScreenOrientation & {
   lock?: (orientation: OrientationLockValue) => Promise<void>;
 };
 
+type VideoElementWithFastSeek = HTMLVideoElement & {
+  fastSeek?: (time: number) => void;
+};
+
 function isHlsSource(source: CachedStreamSource) {
   return (
     source.type === "application/x-mpegURL" ||
@@ -255,6 +259,8 @@ export function WatchPlayer({
     resumeSnapshotRef.current = null;
     initialResumeAppliedRef.current = true;
     const mediaUrl = toMediaSourceUrl(activeSource);
+    const resumeTime = resumeSnapshot?.time ?? 0;
+    const hasResumeTarget = resumeTime > 1;
     const resumeEvents = [
       "durationchange",
       "loadedmetadata",
@@ -272,10 +278,22 @@ export function WatchPlayer({
         return;
       }
 
-      if (resumeSnapshot.time > 1) {
+      if (hasResumeTarget) {
         try {
-          if (Math.abs(video.currentTime - resumeSnapshot.time) > 1) {
-            video.currentTime = resumeSnapshot.time;
+          const duration = Number.isFinite(video.duration)
+            ? Math.max(video.duration - 1, 0)
+            : null;
+          const targetTime =
+            duration !== null ? Math.min(resumeTime, duration) : resumeTime;
+
+          if (Math.abs(video.currentTime - targetTime) > 1) {
+            const seekableVideo = video as VideoElementWithFastSeek;
+
+            if (typeof seekableVideo.fastSeek === "function") {
+              seekableVideo.fastSeek(targetTime);
+            } else {
+              video.currentTime = targetTime;
+            }
           }
         } catch {
           scheduleResumePlayback(300);
@@ -320,20 +338,31 @@ export function WatchPlayer({
 
       if (Hls.isSupported()) {
         hls = new Hls({
+          autoStartLoad: !hasResumeTarget,
           backBufferLength: 60,
           enableWorker: true,
           maxBufferLength: 45,
-          startPosition:
-            resumeSnapshot && resumeSnapshot.time > 1
-              ? resumeSnapshot.time
-              : -1,
+          startPosition: hasResumeTarget ? resumeTime : -1,
         });
         hlsRef.current = hls;
         hls.attachMedia(video);
         hls.loadSource(mediaUrl);
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          if (hasResumeTarget) {
+            hls?.startLoad(resumeTime);
+          }
+
           resumePlayback();
+          scheduleResumePlayback(120);
           scheduleResumePlayback(450);
+          scheduleResumePlayback(1100);
+        });
+        hls.on(Hls.Events.LEVEL_LOADED, () => {
+          resumePlayback();
+          scheduleResumePlayback(200);
+        });
+        hls.on(Hls.Events.FRAG_BUFFERED, () => {
+          resumePlayback();
         });
         hls.on(Hls.Events.ERROR, (_event, data) => {
           if (data.fatal) {
