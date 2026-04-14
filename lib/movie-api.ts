@@ -1,3 +1,5 @@
+import { formatMovieTitle } from "@/lib/movie-title";
+
 const BASE_URL = "https://api.sonzaix.indevs.in";
 
 type JsonRecord = Record<string, unknown>;
@@ -235,6 +237,7 @@ export function normalizeMovieMetadata(
 
   const sourceUrl = getString(value, ["sourceUrl", "url", "source", "slug"]);
   const title = getString(value, ["title", "name"]);
+  const year = getString(value, ["year", "releaseYear"]);
 
   if (!sourceUrl || !title) {
     return null;
@@ -242,14 +245,14 @@ export function normalizeMovieMetadata(
 
   return {
     sourceUrl,
-    title,
+    title: formatMovieTitle(title, { sourceUrl, year }),
     thumbnail: getString(value, ["thumbnail", "poster", "image", "cover"]),
     description: getString(value, ["description", "synopsis", "overview"]),
     duration: getString(value, ["duration", "runtime"]),
     genre: getString(value, ["genre", "genres"]),
     rating: getString(value, ["rating", "imdbRating", "score"]),
     quality: getString(value, ["quality", "resolution"]),
-    year: getString(value, ["year", "releaseYear"]),
+    year,
   };
 }
 
@@ -565,10 +568,15 @@ export async function fetchDetail(
   );
   const root = isRecord(response) ? response : {};
   const data = isRecord(root.data) ? root.data : root;
+  const resolvedSourceUrl = getString(data, ["source", "sourceUrl", "url"]) ?? sourceUrl;
+  const year = getString(data, ["year", "releaseYear"]);
+  const title = getString(data, ["title", "name"]);
 
   return {
-    sourceUrl: getString(data, ["source", "sourceUrl", "url"]) ?? sourceUrl,
-    title: getString(data, ["title", "name"]),
+    sourceUrl: resolvedSourceUrl,
+    title: title
+      ? formatMovieTitle(title, { sourceUrl: resolvedSourceUrl, year })
+      : undefined,
     poster: getString(data, ["poster", "thumbnail", "image"]),
     synopsis: cleanSynopsis(getString(data, ["synopsis", "description", "overview"])),
     genres: getStringList(data, ["genres", "genre"]),

@@ -8,6 +8,7 @@ import {
   type MovieListResult,
   type SanitizedStreamResponse,
 } from "@/lib/movie-api";
+import { formatMovieTitle } from "@/lib/movie-title";
 import { prisma } from "@/lib/prisma";
 
 export type MovieFeedTarget = "home" | "popular" | "new";
@@ -100,6 +101,12 @@ export type CombinedSyncSummary = {
   totalDeactivated: number;
   pages: number;
   targets: Record<MovieFeedTarget, FeedSyncSummary>;
+};
+
+export type TitleCleanupSummary = {
+  changed: number;
+  scanned: number;
+  unchanged: number;
 };
 
 const FEED_CONFIG: Record<
@@ -228,8 +235,13 @@ function normalizeMovieData(
   detail: MovieDetail | null,
   existing?: ExistingSyncedMovie,
 ): MovieMetadataData {
+  const rawTitle = detail?.title ?? movie.title;
+
   return {
-    title: detail?.title ?? movie.title,
+    title: formatMovieTitle(rawTitle, {
+      sourceUrl: detail?.sourceUrl ?? movie.sourceUrl,
+      year: movie.year ?? existing?.year,
+    }),
     thumbnail: detail?.poster ?? movie.thumbnail ?? null,
     description:
       detail?.synopsis ?? movie.description ?? existing?.description ?? null,
@@ -594,4 +606,75 @@ export async function syncAllMovieFeeds(
       new: latest,
     },
   };
+}
+
+export async function cleanupMovieTitles(
+  options: { batchSize?: number } = {},
+): Promise<TitleCleanupSummary> {
+  const batchSize = Math.min(Math.max(options.batchSize ?? 200, 25), 500);
+  let cursor: string | undefined;
+  const summary: TitleCleanupSummary = {
+    changed: 0,
+    scanned: 0,
+    unchanged: 0,
+  };
+
+  while (true) {
+    const movies = await prisma.movie.findMany({
+      ...(cursor
+        ? {
+            cursor: {
+              id: cursor,
+            },
+            skip: 1,
+          }
+        : {}),
+      orderBy: {
+        id: "asc",
+      },
+      select: {
+        id: true,
+        sourceUrl: true,
+        title: true,
+        year: true,
+      },
+      take: batchSize,
+    });
+
+    if (!movies.length) {
+      break;
+    }
+
+    for (const movie of movies) {
+      summary.scanned += 1;
+
+      const nextTitle = formatMovieTitle(movie.title, {
+        sourceUrl: movie.sourceUrl,
+        year: movie.year,
+      });
+
+      if (nextTitle === movie.title) {
+        summary.unchanged += 1;
+        continue;
+      }
+
+      await prisma.movie.update({
+        where: {
+          id: movie.id,
+        },
+        data: {
+          title: nextTitle,
+        },
+      });
+      summary.changed += 1;
+    }
+
+    cursor = movies[movies.length - 1]?.id;
+
+    if (movies.length < batchSize) {
+      break;
+    }
+  }
+
+  return summary;
 }

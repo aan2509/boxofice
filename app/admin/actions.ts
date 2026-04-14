@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { clearAdminSessionCookie, requireAdminSession } from "@/lib/admin-session";
 import {
+  cleanupMovieTitles,
   resolveSyncPage,
   syncAllMovieFeeds,
   syncMovieFeed,
@@ -116,6 +117,39 @@ export async function syncMoviesFromAdmin(formData: FormData) {
       page: String(page),
       sync: "error",
       target,
+    });
+
+    redirectPath = `/admin?${params.toString()}`;
+  }
+
+  redirect(redirectPath);
+}
+
+export async function cleanupMovieTitlesFromAdmin() {
+  await requireAdminSession();
+
+  let redirectPath = "/admin?titleCleanup=ok";
+
+  try {
+    const summary = await cleanupMovieTitles();
+    const params = new URLSearchParams({
+      titleCleanup: "ok",
+      titleChanged: String(summary.changed),
+      titleScanned: String(summary.scanned),
+      titleUnchanged: String(summary.unchanged),
+    });
+
+    revalidatePath("/");
+    revalidatePath("/admin");
+    revalidatePath("/browse/home");
+    revalidatePath("/browse/populer");
+    revalidatePath("/browse/new");
+    redirectPath = `/admin?${params.toString()}`;
+  } catch (error) {
+    const params = new URLSearchParams({
+      message:
+        error instanceof Error ? error.message : "Gagal membersihkan judul",
+      titleCleanup: "error",
     });
 
     redirectPath = `/admin?${params.toString()}`;

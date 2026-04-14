@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { LogOut, Play, ShieldCheck } from "lucide-react";
 
-import { logoutAdmin, syncMoviesFromAdmin } from "@/app/admin/actions";
+import {
+  cleanupMovieTitlesFromAdmin,
+  logoutAdmin,
+  syncMoviesFromAdmin,
+} from "@/app/admin/actions";
 import { SyncSubmitButton } from "@/components/admin/sync-submit-button";
 import { Button } from "@/components/ui/button";
 import { requireAdminSession } from "@/lib/admin-session";
@@ -49,6 +53,10 @@ type AdminPageProps = {
     totalSkippedUnsupported?: string;
     totalUnchanged?: string;
     totalUpdated?: string;
+    titleChanged?: string;
+    titleCleanup?: string;
+    titleScanned?: string;
+    titleUnchanged?: string;
     homeCreated?: string;
     homeErrors?: string;
     homeExisting?: string;
@@ -302,6 +310,27 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           </div>
         ) : null}
 
+        {params.titleCleanup ? (
+          <div className="mb-5 rounded-md border border-white/10 bg-white/[0.06] p-4 text-sm leading-6 text-neutral-200">
+            {params.titleCleanup === "error" ? (
+              <span className="text-red-200">
+                Bersihkan judul gagal: {params.message ?? "terjadi kesalahan"}
+              </span>
+            ) : (
+              <div className="space-y-2">
+                <p className="font-semibold text-white">
+                  Judul film selesai dirapikan.
+                </p>
+                <p className="text-xs leading-5 text-neutral-400">
+                  Dipindai: {params.titleScanned ?? "0"} · Diubah:{" "}
+                  {params.titleChanged ?? "0"} · Sudah rapi:{" "}
+                  {params.titleUnchanged ?? "0"}.
+                </p>
+              </div>
+            )}
+          </div>
+        ) : null}
+
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-md border border-white/10 bg-white/[0.06] p-4">
             <p className="text-sm text-neutral-400">Film home</p>
@@ -363,6 +392,22 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                 />
               ))}
             </div>
+          </form>
+        </div>
+
+        <div className="mt-5 rounded-md border border-white/10 bg-white/[0.04] p-4 sm:p-5">
+          <p className="text-sm font-semibold text-red-400">Perapihan judul</p>
+          <h2 className="mt-1 text-xl font-bold sm:text-2xl">
+            Bersihkan judul
+          </h2>
+          <form action={cleanupMovieTitlesFromAdmin} className="mt-4">
+            <Button
+              type="submit"
+              variant="secondary"
+              className="h-11 border border-white/10 bg-white/10 text-white hover:bg-white/15"
+            >
+              Bersihkan judul
+            </Button>
           </form>
         </div>
       </section>
