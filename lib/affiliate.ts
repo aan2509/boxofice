@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 
 export const AFFILIATE_MINIMUM_WITHDRAW = 50_000;
+export const DEFAULT_AFFILIATE_COMMISSION_RATE = 25;
 
 type AffiliateUser = {
   id: string;
@@ -45,6 +46,23 @@ export function getAffiliateSharePath(referralCode: string) {
   return `/r/${encodeURIComponent(referralCode)}`;
 }
 
+export async function ensureAffiliateProgramSettings() {
+  const existing = await prisma.affiliateProgramSettings.findUnique({
+    where: { slug: "default" },
+  });
+
+  if (existing) {
+    return existing;
+  }
+
+  return prisma.affiliateProgramSettings.create({
+    data: {
+      defaultCommissionRate: DEFAULT_AFFILIATE_COMMISSION_RATE,
+      slug: "default",
+    },
+  });
+}
+
 export async function ensureAffiliateProfile(user: AffiliateUser) {
   const existing = await prisma.affiliateProfile.findUnique({
     where: { userId: user.id },
@@ -55,10 +73,12 @@ export async function ensureAffiliateProfile(user: AffiliateUser) {
     return existing;
   }
 
+  const settings = await ensureAffiliateProgramSettings();
   const referralCode = await generateUniqueReferralCode(user.name);
 
   return prisma.affiliateProfile.create({
     data: {
+      commissionRate: settings.defaultCommissionRate,
       minimumWithdraw: AFFILIATE_MINIMUM_WITHDRAW,
       referralCode,
       userId: user.id,

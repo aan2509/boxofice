@@ -3,14 +3,25 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { ensureAffiliateProgramSettings } from "@/lib/affiliate";
+import { sanitizeAdminRedirectPath } from "@/lib/admin-auth";
 import { clearAdminSessionCookie, requireAdminSession } from "@/lib/admin-session";
 import {
   cleanupMovieTitles,
   resolveSyncPage,
-  syncAllMovieFeeds,
   syncMovieFeed,
   type MovieFeedTarget,
 } from "@/lib/movie-sync";
+import { prisma } from "@/lib/prisma";
+
+function resolveRedirectTarget(
+  formData: FormData,
+  fallbackPath: string,
+) {
+  const path = sanitizeAdminRedirectPath(formData.get("redirectTo"));
+
+  return path || fallbackPath;
+}
 
 function buildSingleTargetParams(
   target: MovieFeedTarget,
@@ -38,7 +49,20 @@ function buildSingleTargetParams(
 
 function buildAllTargetsParams(
   page: number,
-  summary: Awaited<ReturnType<typeof syncAllMovieFeeds>>,
+  summary: {
+    targets: Record<
+      MovieFeedTarget,
+      Awaited<ReturnType<typeof syncMovieFeed>>
+    >;
+    totalCreated: number;
+    totalDuplicateSkipped: number;
+    totalErrors: number;
+    totalExisting: number;
+    totalFetched: number;
+    totalSkippedUnsupported: number;
+    totalUnchanged: number;
+    totalUpdated: number;
+  },
 ) {
   const home = summary.targets.home;
   const popular = summary.targets.popular;
@@ -53,9 +77,7 @@ function buildAllTargetsParams(
     target: "all",
     totalCreated: String(summary.totalCreated),
     totalDuplicateSkipped: String(summary.totalDuplicateSkipped),
-    totalErrors: String(
-      home.errors.length + popular.errors.length + latest.errors.length,
-    ),
+    totalErrors: String(summary.totalErrors),
     totalExisting: String(summary.totalExisting),
     totalFetched: String(summary.totalFetched),
     totalSkippedUnsupported: String(summary.totalSkippedUnsupported),
@@ -86,10 +108,41 @@ function buildAllTargetsParams(
   });
 }
 
+async function syncAllFeedsForPage(page: number) {
+  const [home, popular, latest] = await Promise.all([
+    syncMovieFeed("home", { page }),
+    syncMovieFeed("popular", { page }),
+    syncMovieFeed("new", { page }),
+  ]);
+
+  return {
+    targets: {
+      home,
+      new: latest,
+      popular,
+    },
+    totalCreated: home.created + popular.created + latest.created,
+    totalDuplicateSkipped:
+      home.duplicateSkipped +
+      popular.duplicateSkipped +
+      latest.duplicateSkipped,
+    totalErrors: home.errors.length + popular.errors.length + latest.errors.length,
+    totalExisting: home.existing + popular.existing + latest.existing,
+    totalFetched: home.fetched + popular.fetched + latest.fetched,
+    totalSkippedUnsupported:
+      home.skippedUnsupported +
+      popular.skippedUnsupported +
+      latest.skippedUnsupported,
+    totalUnchanged: home.unchanged + popular.unchanged + latest.unchanged,
+    totalUpdated: home.updated + popular.updated + latest.updated,
+  };
+}
+
 export async function syncMoviesFromAdmin(formData: FormData) {
   await requireAdminSession();
   const rawTarget = String(formData.get("target") ?? "");
   const page = resolveSyncPage(formData.get("page"));
+  const redirectBasePath = resolveRedirectTarget(formData, "/admin/sync");
   const target =
     rawTarget === "home" || rawTarget === "popular" || rawTarget === "new"
       ? rawTarget
@@ -97,20 +150,23 @@ export async function syncMoviesFromAdmin(formData: FormData) {
         ? "all"
         : "home";
 
-  let redirectPath = `/admin?sync=ok&target=${target}&page=${page}`;
+  let redirectPath = `${redirectBasePath}?sync=ok&target=${target}&page=${page}`;
 
   try {
     const params =
       target === "all"
-        ? buildAllTargetsParams(page, await syncAllMovieFeeds({ pages: 1 }))
+        ? buildAllTargetsParams(page, await syncAllFeedsForPage(page))
         : buildSingleTargetParams(target, page, await syncMovieFeed(target, { page }));
 
     revalidatePath("/");
     revalidatePath("/admin");
+    revalidatePath("/admin/sync");
+    revalidatePath("/admin/users");
+    revalidatePath("/admin/settings");
     revalidatePath("/browse/home");
     revalidatePath("/browse/populer");
     revalidatePath("/browse/new");
-    redirectPath = `/admin?${params.toString()}`;
+    redirectPath = `${redirectBasePath}?${params.toString()}`;
   } catch (error) {
     const params = new URLSearchParams({
       message: error instanceof Error ? error.message : "Sync gagal",
@@ -119,16 +175,17 @@ export async function syncMoviesFromAdmin(formData: FormData) {
       target,
     });
 
-    redirectPath = `/admin?${params.toString()}`;
+    redirectPath = `${redirectBasePath}?${params.toString()}`;
   }
 
   redirect(redirectPath);
 }
 
-export async function cleanupMovieTitlesFromAdmin() {
+export async function cleanupMovieTitlesFromAdmin(formData: FormData) {
   await requireAdminSession();
+  const redirectBasePath = resolveRedirectTarget(formData, "/admin/sync");
 
-  let redirectPath = "/admin?titleCleanup=ok";
+  let redirectPath = `${redirectBasePath}?titleCleanup=ok`;
 
   try {
     const summary = await cleanupMovieTitles();
@@ -141,10 +198,11 @@ export async function cleanupMovieTitlesFromAdmin() {
 
     revalidatePath("/");
     revalidatePath("/admin");
+    revalidatePath("/admin/sync");
     revalidatePath("/browse/home");
     revalidatePath("/browse/populer");
     revalidatePath("/browse/new");
-    redirectPath = `/admin?${params.toString()}`;
+    redirectPath = `${redirectBasePath}?${params.toString()}`;
   } catch (error) {
     const params = new URLSearchParams({
       message:
@@ -152,10 +210,65 @@ export async function cleanupMovieTitlesFromAdmin() {
       titleCleanup: "error",
     });
 
-    redirectPath = `/admin?${params.toString()}`;
+    redirectPath = `${redirectBasePath}?${params.toString()}`;
   }
 
   redirect(redirectPath);
+}
+
+export async function updateAffiliateProgramSettings(formData: FormData) {
+  await requireAdminSession();
+
+  const redirectBasePath = resolveRedirectTarget(formData, "/admin/settings");
+  const rawRate = Number(formData.get("defaultCommissionRate") ?? 0);
+  const defaultCommissionRate = Math.trunc(rawRate);
+
+  if (!Number.isFinite(defaultCommissionRate) || defaultCommissionRate < 1) {
+    redirect(
+      `${redirectBasePath}?settings=error&message=${encodeURIComponent("Presentase komisi minimal 1%.")}`,
+    );
+  }
+
+  if (defaultCommissionRate > 100) {
+    redirect(
+      `${redirectBasePath}?settings=error&message=${encodeURIComponent("Presentase komisi maksimal 100%.")}`,
+    );
+  }
+
+  const applyToExisting = formData.get("applyToExisting") === "on";
+
+  const settings = await ensureAffiliateProgramSettings();
+
+  await prisma.$transaction(async (tx) => {
+    await tx.affiliateProgramSettings.update({
+      where: { id: settings.id },
+      data: {
+        defaultCommissionRate,
+      },
+    });
+
+    if (applyToExisting) {
+      await tx.affiliateProfile.updateMany({
+        data: {
+          commissionRate: defaultCommissionRate,
+        },
+      });
+    }
+  });
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/users");
+  revalidatePath("/admin/settings");
+  revalidatePath("/affiliate");
+
+  const params = new URLSearchParams({
+    applyToExisting: applyToExisting ? "1" : "0",
+    message: "Presentase komisi berhasil diperbarui.",
+    rate: String(defaultCommissionRate),
+    settings: "ok",
+  });
+
+  redirect(`${redirectBasePath}?${params.toString()}`);
 }
 
 export async function logoutAdmin() {
