@@ -1,9 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { registerAffiliateClick } from "@/lib/affiliate";
+import { getTelegramBotSettingsSafe } from "@/lib/telegram-bot-settings";
 import {
   buildAffiliateStartParam,
-  buildTelegramBotChatUrl,
+  buildTelegramBotChatUrlForUsername,
 } from "@/lib/telegram-miniapp";
 
 export const dynamic = "force-dynamic";
@@ -26,7 +27,12 @@ export async function GET(
     await registerAffiliateClick(normalizedCode).catch(() => undefined);
   }
 
+  const telegram = await getTelegramBotSettingsSafe();
+
   return NextResponse.redirect(
-    buildTelegramBotChatUrl(buildAffiliateStartParam(normalizedCode)),
+    buildTelegramBotChatUrlForUsername(
+      telegram.runtime.botUsername,
+      buildAffiliateStartParam(normalizedCode),
+    ),
   );
 }

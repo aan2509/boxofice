@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { attachAffiliateReferral, registerAffiliateClick } from "@/lib/affiliate";
+import { getTelegramBotSettingsSafe } from "@/lib/telegram-bot-settings";
 import {
   extractAffiliateCodeFromStartParam,
   validateTelegramInitData,
@@ -29,7 +30,16 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const telegram = validateTelegramInitData(initData);
+    const botSettings = await getTelegramBotSettingsSafe();
+
+    if (!botSettings.runtime.botToken) {
+      throw new Error("Bot token Telegram belum diatur di database maupun env.");
+    }
+
+    const telegram = validateTelegramInitData(
+      initData,
+      botSettings.runtime.botToken,
+    );
     const user = await upsertTelegramUser(telegram);
     const referralCode = extractAffiliateCodeFromStartParam(telegram.startParam);
 

@@ -1,10 +1,8 @@
 import { randomBytes } from "node:crypto";
 
 import { prisma } from "@/lib/prisma";
-import {
-  buildAffiliateStartParam,
-  buildTelegramBotChatUrl,
-} from "@/lib/telegram-miniapp";
+import { getTelegramBotSettingsSafe } from "@/lib/telegram-bot-settings";
+import { buildAffiliateStartParam, buildTelegramBotChatUrlForUsername } from "@/lib/telegram-miniapp";
 
 export const AFFILIATE_MINIMUM_WITHDRAW = 50_000;
 export const DEFAULT_AFFILIATE_COMMISSION_RATE = 25;
@@ -84,9 +82,14 @@ async function generateUniqueReferralCode(name: string) {
   return `${base}${Date.now().toString(36).toUpperCase()}`;
 }
 
-export function getAffiliateSharePath(referralCode: string) {
+export async function getAffiliateSharePath(referralCode: string) {
   try {
-    return buildTelegramBotChatUrl(buildAffiliateStartParam(referralCode));
+    const telegram = await getTelegramBotSettingsSafe();
+
+    return buildTelegramBotChatUrlForUsername(
+      telegram.runtime.botUsername,
+      buildAffiliateStartParam(referralCode),
+    );
   } catch {
     return `/r/${encodeURIComponent(referralCode)}`;
   }

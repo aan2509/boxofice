@@ -7,8 +7,6 @@ import {
 } from "@/lib/telegram-bot-settings";
 import {
   extractAffiliateCodeFromStartParam,
-  getTelegramBotToken,
-  getTelegramWebhookSecret,
 } from "@/lib/telegram-miniapp";
 
 export const runtime = "nodejs";
@@ -27,9 +25,13 @@ type TelegramUpdate = {
   };
 };
 
-async function callTelegramBotApi(method: string, payload: unknown) {
+async function callTelegramBotApi(
+  botToken: string,
+  method: string,
+  payload: unknown,
+) {
   const response = await fetch(
-    `https://api.telegram.org/bot${getTelegramBotToken()}/${method}`,
+    `https://api.telegram.org/bot${botToken}/${method}`,
     {
       body: JSON.stringify(payload),
       cache: "no-store",
@@ -55,6 +57,10 @@ function parseStartPayload(messageText: string | undefined) {
   const [, payload] = text.split(/\s+/, 2);
 
   return payload?.trim() || null;
+}
+
+function isStartCommand(messageText: string | undefined) {
+  return messageText?.trim().startsWith("/start") ?? false;
 }
 
 function sanitizeAbsoluteUrl(value: string) {
@@ -94,17 +100,31 @@ function createUrlButton(text: string, url: string) {
 }
 
 export async function POST(request: NextRequest) {
+  const botSettings = await getTelegramBotSettingsSafe();
+
+  if (!botSettings.runtime.webhookSecret || !botSettings.runtime.botToken) {
+    return NextResponse.json(
+      { error: "Konfigurasi bot Telegram belum lengkap." },
+      { status: 500 },
+    );
+  }
+
   const secret = request.headers.get("x-telegram-bot-api-secret-token");
 
-  if (secret !== getTelegramWebhookSecret()) {
+  if (secret !== botSettings.runtime.webhookSecret) {
     return NextResponse.json({ error: "Webhook secret tidak valid." }, { status: 401 });
   }
 
   const update = (await request.json().catch(() => null)) as TelegramUpdate | null;
+  const isStart = isStartCommand(update?.message?.text);
+
+  if (!isStart) {
+    return NextResponse.json({ ok: true, skipped: "not_start" });
+  }
+
   const chatId = update?.message?.chat?.id;
   const startPayload = parseStartPayload(update?.message?.text);
   const referralCode = extractAffiliateCodeFromStartParam(startPayload);
-  const botSettings = await getTelegramBotSettingsSafe();
 
   if (referralCode) {
     await registerAffiliateClick(referralCode).catch(() => undefined);
@@ -141,7 +161,7 @@ export async function POST(request: NextRequest) {
       username: update?.message?.from?.username,
     });
 
-    await callTelegramBotApi("sendMessage", {
+    await callTelegramBotApi(botSettings.runtime.botToken, "sendMessage", {
       chat_id: chatId,
       reply_markup: {
         inline_keyboard: inlineKeyboard,

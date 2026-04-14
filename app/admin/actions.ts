@@ -285,8 +285,36 @@ function readTextField(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
 }
 
+function readNullableTextField(formData: FormData, key: string) {
+  const value = readTextField(formData, key);
+
+  return value || null;
+}
+
 function readRequiredUrlField(formData: FormData, key: string, label: string) {
   const value = readTextField(formData, key);
+
+  try {
+    const url = new URL(value);
+
+    if (url.protocol !== "https:" && url.protocol !== "http:") {
+      throw new Error("invalid_protocol");
+    }
+
+    return url.toString();
+  } catch {
+    redirect(
+      `/admin/settings?bot=error&message=${encodeURIComponent(`${label} wajib berupa URL yang valid.`)}`,
+    );
+  }
+}
+
+function readNullableUrlField(formData: FormData, key: string, label: string) {
+  const value = readTextField(formData, key);
+
+  if (!value) {
+    return null;
+  }
 
   try {
     const url = new URL(value);
@@ -339,16 +367,25 @@ export async function updateTelegramBotSettings(formData: FormData) {
       "affiliateUrl",
       "URL tombol affiliate",
     ),
+    botToken: readNullableTextField(formData, "botToken"),
+    botUsername: readNullableTextField(formData, "botUsername"),
     channelLabel: readTextField(formData, "channelLabel") || "🎥 Film Box Office",
     channelUrl: readRequiredUrlField(formData, "channelUrl", "URL channel film"),
+    miniAppShortName: readNullableTextField(formData, "miniAppShortName"),
     openAppLabel: readTextField(formData, "openAppLabel") || "🎬 Buka",
     openAppUrl: readRequiredUrlField(formData, "openAppUrl", "URL tombol buka"),
+    publicAppUrl: readNullableUrlField(
+      formData,
+      "publicAppUrl",
+      "Public App URL",
+    ),
     searchLabel: readTextField(formData, "searchLabel") || "🔎 Cari Judul",
     searchUrl: readRequiredUrlField(formData, "searchUrl", "URL tombol cari"),
     supportLabel: readTextField(formData, "supportLabel") || "📞 Hubungi Admin",
     supportUrl: readRequiredUrlField(formData, "supportUrl", "URL support admin"),
     vipLabel: readTextField(formData, "vipLabel") || "💎 Join VIP",
     vipUrl: readRequiredUrlField(formData, "vipUrl", "URL tombol VIP"),
+    webhookSecret: readNullableTextField(formData, "webhookSecret"),
     welcomeMessage,
   };
 

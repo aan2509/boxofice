@@ -19,6 +19,13 @@ export type ValidatedTelegramInitData = {
   user: TelegramMiniAppUser;
 };
 
+export type TelegramRuntimeConfig = {
+  botToken: string;
+  botUsername: string;
+  miniAppShortName: string | null;
+  webhookSecret: string;
+};
+
 const DEFAULT_INIT_DATA_MAX_AGE_SECONDS = 60 * 60;
 
 function getRequiredEnv(name: string) {
@@ -57,15 +64,30 @@ export function getTelegramInitDataMaxAgeSeconds() {
   return Math.trunc(raw);
 }
 
-export function buildTelegramMiniAppUrl(startParam?: string | null) {
-  const shortName = getTelegramMiniAppShortName();
+export function buildTelegramBotChatUrlForUsername(
+  botUsername: string,
+  startParam?: string | null,
+) {
+  const normalizedUsername = botUsername.trim().replace(/^@/, "");
+  const url = new URL(`https://t.me/${normalizedUsername}`);
 
-  if (!shortName) {
-    return buildTelegramBotChatUrl(startParam);
+  if (startParam) {
+    url.searchParams.set("start", startParam);
   }
 
-  const username = getTelegramBotUsername();
-  const url = new URL(`https://t.me/${username}/${shortName}`);
+  return url.toString();
+}
+
+export function buildTelegramMiniAppUrlForConfig(
+  input: Pick<TelegramRuntimeConfig, "botUsername" | "miniAppShortName">,
+  startParam?: string | null,
+) {
+  if (!input.miniAppShortName) {
+    return buildTelegramBotChatUrlForUsername(input.botUsername, startParam);
+  }
+
+  const username = input.botUsername.trim().replace(/^@/, "");
+  const url = new URL(`https://t.me/${username}/${input.miniAppShortName}`);
 
   if (startParam) {
     url.searchParams.set("startapp", startParam);
@@ -74,15 +96,18 @@ export function buildTelegramMiniAppUrl(startParam?: string | null) {
   return url.toString();
 }
 
+export function buildTelegramMiniAppUrl(startParam?: string | null) {
+  return buildTelegramMiniAppUrlForConfig(
+    {
+      botUsername: getTelegramBotUsername(),
+      miniAppShortName: getTelegramMiniAppShortName(),
+    },
+    startParam,
+  );
+}
+
 export function buildTelegramBotChatUrl(startParam?: string | null) {
-  const username = getTelegramBotUsername();
-  const url = new URL(`https://t.me/${username}`);
-
-  if (startParam) {
-    url.searchParams.set("start", startParam);
-  }
-
-  return url.toString();
+  return buildTelegramBotChatUrlForUsername(getTelegramBotUsername(), startParam);
 }
 
 export function buildAffiliateStartParam(referralCode: string) {
@@ -121,7 +146,10 @@ function createTelegramSecretKey(botToken: string) {
   return createHmac("sha256", "WebAppData").update(botToken).digest();
 }
 
-export function validateTelegramInitData(initData: string) {
+export function validateTelegramInitData(
+  initData: string,
+  botToken = getTelegramBotToken(),
+) {
   const parsed = new URLSearchParams(initData);
   const providedHash = parsed.get("hash");
 
@@ -137,7 +165,7 @@ export function validateTelegramInitData(initData: string) {
 
   const actualHash = createHmac(
     "sha256",
-    createTelegramSecretKey(getTelegramBotToken()),
+    createTelegramSecretKey(botToken),
   )
     .update(dataCheckString)
     .digest("hex");

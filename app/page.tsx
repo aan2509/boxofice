@@ -6,9 +6,10 @@ import { MovieCardLink } from "@/components/movie/movie-card-link";
 import { TelegramEntryGate } from "@/components/telegram/telegram-entry-gate";
 import { Button } from "@/components/ui/button";
 import { getHomepageMovieData } from "@/lib/movie-feeds";
+import { getTelegramBotSettingsSafe } from "@/lib/telegram-bot-settings";
 import {
-  buildTelegramBotChatUrl,
-  buildTelegramMiniAppUrl,
+  buildTelegramBotChatUrlForUsername,
+  buildTelegramMiniAppUrlForConfig,
 } from "@/lib/telegram-miniapp";
 import { getCurrentUserSession } from "@/lib/user-auth";
 
@@ -65,11 +66,15 @@ export default async function Home() {
   const user = await getCurrentUserSession();
 
   if (!user) {
+    const telegram = await getTelegramBotSettingsSafe();
+
     return (
       <TelegramEntryGate
         adminLoginUrl="/admin/login"
-        botChatUrl={buildTelegramBotChatUrl()}
-        miniAppUrl={buildTelegramMiniAppUrl()}
+        botChatUrl={buildTelegramBotChatUrlForUsername(
+          telegram.runtime.botUsername,
+        )}
+        miniAppUrl={buildTelegramMiniAppUrlForConfig(telegram.runtime)}
       />
     );
   }

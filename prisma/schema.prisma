@@ -155,6 +155,11 @@ model AffiliateProgramSettings {
 model TelegramBotSettings {
   id                  String   @id @default(uuid())
   slug                String   @unique @default("default")
+  botToken            String?  @db.Text
+  botUsername         String?
+  webhookSecret       String?
+  publicAppUrl        String?  @db.Text
+  miniAppShortName    String?
   welcomeMessage      String   @db.Text
   openAppLabel        String
   openAppUrl          String   @db.Text
