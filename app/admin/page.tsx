@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { LogOut, Play, RefreshCw, ShieldCheck } from "lucide-react";
+import { LogOut, Play, ShieldCheck } from "lucide-react";
 
 import { logoutAdmin, syncMoviesFromAdmin } from "@/app/admin/actions";
+import { SyncSubmitButton } from "@/components/admin/sync-submit-button";
 import { Button } from "@/components/ui/button";
 import { requireAdminSession } from "@/lib/admin-session";
 import { DEFAULT_SYNC_PAGES, MAX_SYNC_PAGES } from "@/lib/movie-sync";
@@ -31,6 +32,7 @@ type AdminPageProps = {
     created?: string;
     deactivated?: string;
     duplicateSkipped?: string;
+    errors?: string;
     existing?: string;
     fetched?: string;
     message?: string;
@@ -103,8 +105,18 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
               <div className="space-y-3">
                 <p className="font-semibold text-white">
                   Sync {params.target ?? "feed"}{" "}
-                  {params.pages ?? DEFAULT_SYNC_PAGES} page selesai.
+                  {params.pages ?? DEFAULT_SYNC_PAGES} page{" "}
+                  {params.sync === "partial"
+                    ? "selesai sebagian."
+                    : "selesai."}
                 </p>
+                {params.sync === "partial" ? (
+                  <p className="rounded-md border border-yellow-400/20 bg-yellow-500/10 px-3 py-2 text-xs leading-5 text-yellow-100">
+                    Sebagian data upstream gagal diambil, jadi feed lama tidak
+                    dinonaktifkan untuk mencegah katalog hilang. Error pertama:{" "}
+                    {params.message ?? "upstream tidak merespons"}
+                  </p>
+                ) : null}
                 <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                   <span className="rounded-md bg-black/30 px-3 py-2">
                     Judul baru:{" "}
@@ -135,7 +147,8 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                   Diambil dari API: {params.fetched ?? "0"} item. Aktif di feed:{" "}
                   {params.active ?? "0"}. Dinonaktifkan dari feed:{" "}
                   {params.deactivated ?? "0"}. Duplikat dari response yang
-                  dilewati: {params.duplicateSkipped ?? "0"}.
+                  dilewati: {params.duplicateSkipped ?? "0"}. Error:{" "}
+                  {params.errors ?? "0"}.
                 </p>
               </div>
             )}
@@ -191,17 +204,11 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 
             <div className="grid gap-3 sm:grid-cols-3">
               {FEED_BUTTONS.map((item) => (
-                <Button
+                <SyncSubmitButton
                   key={item.target}
-                  type="submit"
-                  name="target"
-                  value={item.target}
-                  variant="secondary"
-                  className="h-12 w-full border border-white/10 bg-white/10 text-white hover:bg-white/15"
-                >
-                  <RefreshCw className="size-4" />
-                  {item.label}
-                </Button>
+                  label={item.label}
+                  target={item.target}
+                />
               ))}
             </div>
           </form>

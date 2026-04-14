@@ -32,6 +32,14 @@ type MovieMetadataData = {
   quality: string | null;
 };
 
+type FetchedFeedPages = {
+  duplicateSkipped: number;
+  fetched: number;
+  hadFetchErrors: boolean;
+  moviesBySource: Map<string, MovieListResult["movies"][number]>;
+  pageErrors: string[];
+};
+
 export type FeedSyncSummary = {
   target: MovieFeedTarget;
   fetched: number;
@@ -42,6 +50,7 @@ export type FeedSyncSummary = {
   upserted: number;
   duplicateSkipped: number;
   deactivated: number;
+  hadFetchErrors: boolean;
   active: number;
   errors: string[];
 };
@@ -102,14 +111,27 @@ export function resolveSyncPages(
 async function fetchFeedPages(
   fetcher: (page?: number) => Promise<MovieListResult>,
   pages: number,
-) {
+): Promise<FetchedFeedPages> {
   const moviesBySource = new Map<string, MovieListResult["movies"][number]>();
   let fetched = 0;
   let duplicateSkipped = 0;
+  const pageErrors: string[] = [];
   let totalPages = pages;
 
   for (let page = 1; page <= pages; page += 1) {
-    const result = await fetcher(page);
+    let result: MovieListResult;
+
+    try {
+      result = await fetcher(page);
+    } catch (error) {
+      pageErrors.push(
+        `Page ${page} gagal: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+      );
+      break;
+    }
+
     fetched += result.fetched;
 
     if (typeof result.totalPages === "number" && result.totalPages > 0) {
@@ -132,7 +154,9 @@ async function fetchFeedPages(
   return {
     duplicateSkipped,
     fetched,
+    hadFetchErrors: pageErrors.length > 0,
     moviesBySource,
+    pageErrors,
   };
 }
 
@@ -182,8 +206,9 @@ export async function syncMovieFeed(
     upserted: 0,
     duplicateSkipped: feed.duplicateSkipped,
     deactivated: 0,
+    hadFetchErrors: feed.hadFetchErrors,
     active: sourceUrls.length,
-    errors: [],
+    errors: [...feed.pageErrors],
   };
   const existingMovies = await prisma.movie.findMany({
     where: {
@@ -258,25 +283,28 @@ export async function syncMovieFeed(
     }
   }
 
-  const deactivateData = { [config.dbField]: false } as Record<
-    typeof config.dbField,
-    boolean
-  >;
-  const deactivateResult = await prisma.movie.updateMany({
-    where: sourceUrls.length
-      ? {
-          [config.dbField]: true,
-          sourceUrl: {
-            notIn: sourceUrls,
+  if (!summary.hadFetchErrors) {
+    const deactivateData = { [config.dbField]: false } as Record<
+      typeof config.dbField,
+      boolean
+    >;
+    const deactivateResult = await prisma.movie.updateMany({
+      where: sourceUrls.length
+        ? {
+            [config.dbField]: true,
+            sourceUrl: {
+              notIn: sourceUrls,
+            },
+          }
+        : {
+            [config.dbField]: true,
           },
-        }
-      : {
-          [config.dbField]: true,
-        },
-    data: deactivateData,
-  });
+      data: deactivateData,
+    });
 
-  summary.deactivated = deactivateResult.count;
+    summary.deactivated = deactivateResult.count;
+  }
+
   return summary;
 }
 

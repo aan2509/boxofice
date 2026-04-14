@@ -179,7 +179,12 @@ async function requestJson<T>(
     } catch (error) {
       lastError = error;
 
-      if (error instanceof MovieApiError || attempt === 3) {
+      const canRetry =
+        !(error instanceof MovieApiError) ||
+        typeof error.status !== "number" ||
+        error.status >= 500;
+
+      if (!canRetry || attempt === 3) {
         break;
       }
 
