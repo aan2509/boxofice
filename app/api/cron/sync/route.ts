@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import {
+  resolveSyncPage,
   resolveSyncPages,
   syncAllMovieFeeds,
   syncMovieFeed,
@@ -37,12 +38,16 @@ export async function GET(request: NextRequest) {
 
   try {
     const target = request.nextUrl.searchParams.get("target");
+    const pageParam = request.nextUrl.searchParams.get("page");
     const pages = resolveSyncPages(request.nextUrl.searchParams.get("pages"));
     if (target === "home" || target === "popular" || target === "new") {
-      const summary = await syncMovieFeed(target, { pages });
+      const summary = pageParam
+        ? await syncMovieFeed(target, { page: resolveSyncPage(pageParam) })
+        : await syncMovieFeed(target, { pages });
 
       return NextResponse.json({
         ok: summary.errors.length === 0,
+        page: summary.page,
         pages,
         summary,
       });

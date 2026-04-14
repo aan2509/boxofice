@@ -7,7 +7,9 @@ import {
 import { prisma } from "@/lib/prisma";
 
 export type MovieFeedTarget = "home" | "popular" | "new";
+export const DEFAULT_SYNC_PAGE = 1;
 export const DEFAULT_SYNC_PAGES = 3;
+export const MAX_SYNC_PAGE = 5000;
 export const MAX_SYNC_PAGES = 20;
 
 type FeedDbField = "inHome" | "inPopular" | "inNew";
@@ -42,6 +44,8 @@ type FetchedFeedPages = {
 
 export type FeedSyncSummary = {
   target: MovieFeedTarget;
+  page?: number;
+  pages?: number;
   fetched: number;
   created: number;
   existing: number;
@@ -108,17 +112,39 @@ export function resolveSyncPages(
   return Math.min(safeValue, MAX_SYNC_PAGES);
 }
 
+export function resolveSyncPage(
+  input: FormDataEntryValue | string | number | null | undefined,
+) {
+  const rawValue =
+    typeof input === "string"
+      ? Number(input)
+      : typeof input === "number"
+        ? input
+        : DEFAULT_SYNC_PAGE;
+  const safeValue = Number.isFinite(rawValue)
+    ? Math.trunc(rawValue)
+    : DEFAULT_SYNC_PAGE;
+
+  if (safeValue < 1) {
+    return DEFAULT_SYNC_PAGE;
+  }
+
+  return Math.min(safeValue, MAX_SYNC_PAGE);
+}
+
 async function fetchFeedPages(
   fetcher: (page?: number) => Promise<MovieListResult>,
   pages: number,
+  startPage = 1,
 ): Promise<FetchedFeedPages> {
   const moviesBySource = new Map<string, MovieListResult["movies"][number]>();
   let fetched = 0;
   let duplicateSkipped = 0;
   const pageErrors: string[] = [];
-  let totalPages = pages;
+  const endPage = startPage + pages - 1;
+  let totalPages = endPage;
 
-  for (let page = 1; page <= pages; page += 1) {
+  for (let page = startPage; page <= endPage; page += 1) {
     let result: MovieListResult;
 
     try {
@@ -189,15 +215,18 @@ function hasMovieChanged(
 
 export async function syncMovieFeed(
   target: MovieFeedTarget,
-  options: { pages?: number } = {},
+  options: { page?: number; pages?: number } = {},
 ): Promise<FeedSyncSummary> {
   const config = FEED_CONFIG[target];
-  const pages = resolveSyncPages(options.pages);
-  const feed = await fetchFeedPages(config.fetcher, pages);
+  const page = resolveSyncPage(options.page);
+  const pages = options.page ? 1 : resolveSyncPages(options.pages);
+  const feed = await fetchFeedPages(config.fetcher, pages, options.page ? page : 1);
   const moviesBySource = feed.moviesBySource;
   const sourceUrls = Array.from(moviesBySource.keys());
   const summary: FeedSyncSummary = {
     target,
+    page: options.page ? page : undefined,
+    pages: options.page ? undefined : pages,
     fetched: feed.fetched,
     created: 0,
     existing: 0,
@@ -281,28 +310,6 @@ export async function syncMovieFeed(
         }`,
       );
     }
-  }
-
-  if (!summary.hadFetchErrors) {
-    const deactivateData = { [config.dbField]: false } as Record<
-      typeof config.dbField,
-      boolean
-    >;
-    const deactivateResult = await prisma.movie.updateMany({
-      where: sourceUrls.length
-        ? {
-            [config.dbField]: true,
-            sourceUrl: {
-              notIn: sourceUrls,
-            },
-          }
-        : {
-            [config.dbField]: true,
-          },
-      data: deactivateData,
-    });
-
-    summary.deactivated = deactivateResult.count;
   }
 
   return summary;

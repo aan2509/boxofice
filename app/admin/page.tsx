@@ -5,7 +5,7 @@ import { logoutAdmin, syncMoviesFromAdmin } from "@/app/admin/actions";
 import { SyncSubmitButton } from "@/components/admin/sync-submit-button";
 import { Button } from "@/components/ui/button";
 import { requireAdminSession } from "@/lib/admin-session";
-import { DEFAULT_SYNC_PAGES, MAX_SYNC_PAGES } from "@/lib/movie-sync";
+import { DEFAULT_SYNC_PAGE, MAX_SYNC_PAGE } from "@/lib/movie-sync";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -36,6 +36,7 @@ type AdminPageProps = {
     existing?: string;
     fetched?: string;
     message?: string;
+    page?: string;
     pages?: string;
     sync?: string;
     target?: string;
@@ -105,7 +106,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
               <div className="space-y-3">
                 <p className="font-semibold text-white">
                   Sync {params.target ?? "feed"}{" "}
-                  {params.pages ?? DEFAULT_SYNC_PAGES} page{" "}
+                  page {params.page ?? params.pages ?? DEFAULT_SYNC_PAGE}{" "}
                   {params.sync === "partial"
                     ? "selesai sebagian."
                     : "selesai."}
@@ -144,11 +145,10 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                   </span>
                 </div>
                 <p className="text-xs leading-5 text-neutral-400">
-                  Diambil dari API: {params.fetched ?? "0"} item. Aktif di feed:{" "}
-                  {params.active ?? "0"}. Dinonaktifkan dari feed:{" "}
-                  {params.deactivated ?? "0"}. Duplikat dari response yang
-                  dilewati: {params.duplicateSkipped ?? "0"}. Error:{" "}
-                  {params.errors ?? "0"}.
+                  Diambil dari API: {params.fetched ?? "0"} item. Judul unik di
+                  page ini: {params.active ?? "0"}. Tidak ada film lama yang
+                  dihapus dari feed. Duplikat dari response yang dilewati:{" "}
+                  {params.duplicateSkipped ?? "0"}. Error: {params.errors ?? "0"}.
                 </p>
               </div>
             )}
@@ -181,24 +181,28 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-400">
             Sinkronkan metadata lokal langsung dari kategori home, populer, dan
-            new. Halaman depan akan otomatis mengikuti hasil sync terakhir.
+            new. Pilih nomor page upstream yang ingin dimasukkan ke katalog.
+            Judul lama tetap disimpan.
           </p>
 
           <form action={syncMoviesFromAdmin} className="mt-5 space-y-4">
             <div className="max-w-xs">
               <label className="block text-sm font-medium text-neutral-300">
-                Jumlah page per sync
+                Nomor page upstream
               </label>
               <input
-                name="pages"
+                name="page"
                 type="number"
                 min={1}
-                max={MAX_SYNC_PAGES}
-                defaultValue={params.pages ?? String(DEFAULT_SYNC_PAGES)}
+                max={MAX_SYNC_PAGE}
+                defaultValue={
+                  params.page ?? params.pages ?? String(DEFAULT_SYNC_PAGE)
+                }
                 className="mt-2 h-12 w-full rounded-md border border-white/10 bg-white/[0.06] px-3 text-base text-white outline-none focus:border-red-400"
               />
               <p className="mt-2 text-xs leading-5 text-neutral-500">
-                Maksimal {MAX_SYNC_PAGES} page per endpoint untuk sekali jalan.
+                Sekali klik hanya mengambil 1 page agar ringan. Kamu bisa isi
+                page berapa pun sesuai kebutuhan.
               </p>
             </div>
 

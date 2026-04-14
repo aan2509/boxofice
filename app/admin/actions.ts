@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 
 import { clearAdminSessionCookie, requireAdminSession } from "@/lib/admin-session";
 import {
-  resolveSyncPages,
+  resolveSyncPage,
   syncMovieFeed,
   type MovieFeedTarget,
 } from "@/lib/movie-sync";
@@ -13,16 +13,16 @@ import {
 export async function syncMoviesFromAdmin(formData: FormData) {
   await requireAdminSession();
   const rawTarget = String(formData.get("target") ?? "");
-  const pages = resolveSyncPages(formData.get("pages"));
+  const page = resolveSyncPage(formData.get("page"));
   const target: MovieFeedTarget =
     rawTarget === "home" || rawTarget === "popular" || rawTarget === "new"
       ? rawTarget
       : "home";
 
-  let redirectPath = `/admin?sync=ok&target=${target}&pages=${pages}`;
+  let redirectPath = `/admin?sync=ok&target=${target}&page=${page}`;
 
   try {
-    const summary = await syncMovieFeed(target, { pages });
+    const summary = await syncMovieFeed(target, { page });
     const params = new URLSearchParams({
       active: String(summary.active),
       created: String(summary.created),
@@ -32,7 +32,7 @@ export async function syncMoviesFromAdmin(formData: FormData) {
       existing: String(summary.existing),
       fetched: String(summary.fetched),
       message: summary.errors[0] ?? "",
-      pages: String(pages),
+      page: String(page),
       sync: summary.errors.length ? "partial" : "ok",
       target,
       unchanged: String(summary.unchanged),
@@ -46,7 +46,7 @@ export async function syncMoviesFromAdmin(formData: FormData) {
   } catch (error) {
     const params = new URLSearchParams({
       message: error instanceof Error ? error.message : "Sync gagal",
-      pages: String(pages),
+      page: String(page),
       sync: "error",
       target,
     });
