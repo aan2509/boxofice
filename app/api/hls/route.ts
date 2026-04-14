@@ -52,15 +52,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unsupported url" }, { status: 400 });
   }
 
+  const range = request.headers.get("range");
+  const isPlaylist = isPlaylistUrl(upstreamUrl.toString());
   const response = await fetch(upstreamUrl, {
+    cache: isPlaylist ? undefined : "no-store",
     headers: {
       Accept: "*/*",
+      ...(range ? { Range: range } : {}),
       "User-Agent": "Mozilla/5.0 Boxofice/1.0",
       Referer: upstreamUrl.origin,
     },
-    next: {
-      revalidate: isPlaylistUrl(upstreamUrl.toString()) ? 300 : 0,
-    },
+    ...(isPlaylist ? { next: { revalidate: 300 } } : {}),
   });
 
   const contentType = response.headers.get("content-type") ?? "";
@@ -73,7 +75,7 @@ export async function GET(request: NextRequest) {
   }
 
   if (
-    isPlaylistUrl(upstreamUrl.toString()) ||
+    isPlaylist ||
     contentType.includes("mpegurl") ||
     contentType.includes("application/vnd.apple")
   ) {
@@ -95,10 +97,26 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  const headers = new Headers();
+  headers.set("Content-Type", contentType || "video/mp2t");
+  headers.set("Cache-Control", "s-maxage=3600, stale-while-revalidate=300");
+
+  for (const header of [
+    "accept-ranges",
+    "content-length",
+    "content-range",
+  ]) {
+    const value = response.headers.get(header);
+
+    if (value) {
+      headers.set(header, value);
+    }
+  }
+
   return new NextResponse(response.body, {
+    status: response.status,
     headers: {
-      "Content-Type": contentType || "video/mp2t",
-      "Cache-Control": "s-maxage=3600, stale-while-revalidate=300",
+      ...Object.fromEntries(headers.entries()),
     },
   });
 }

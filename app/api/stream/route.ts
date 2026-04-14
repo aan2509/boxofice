@@ -42,6 +42,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(
       {
+        iframe: stream.iframe,
         originalUrl: stream.originalUrl,
         sources: stream.sources,
         resolvedFrom: stream.resolvedFrom,

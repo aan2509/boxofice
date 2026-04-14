@@ -47,10 +47,7 @@ function toVideoJsSource(source: StreamSource) {
   const type = source.type ?? (isHlsSource(source) ? "application/x-mpegURL" : "video/mp4");
 
   return {
-    src:
-      type === "application/x-mpegURL"
-        ? `/api/hls?url=${encodeURIComponent(source.url)}`
-        : source.url,
+    src: `/api/hls?url=${encodeURIComponent(source.url)}`,
     type,
   };
 }

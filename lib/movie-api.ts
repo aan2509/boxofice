@@ -1,6 +1,7 @@
 const BASE_URL = "https://api.sonzaix.indevs.in";
 
 type JsonRecord = Record<string, unknown>;
+const MEDIA_PROBE_TIMEOUT_MS = 8000;
 
 export type NormalizedMovieMetadata = {
   sourceUrl: string;
@@ -355,6 +356,124 @@ function normalizeStreamResponse(
   };
 }
 
+function isLikelyBadMediaContentType(contentType: string) {
+  const lowered = contentType.toLowerCase();
+
+  return (
+    lowered.includes("text/html") ||
+    lowered.includes("application/json") ||
+    lowered.includes("image/")
+  );
+}
+
+function looksLikeImageBytes(bytes: Uint8Array) {
+  if (bytes.length < 12) {
+    return false;
+  }
+
+  const pngSignature = [0x89, 0x50, 0x4e, 0x47];
+  const gifSignature = [0x47, 0x49, 0x46, 0x38];
+
+  return (
+    pngSignature.every((byte, index) => bytes[index] === byte) ||
+    gifSignature.every((byte, index) => bytes[index] === byte) ||
+    (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) ||
+    (bytes[0] === 0x52 &&
+      bytes[1] === 0x49 &&
+      bytes[2] === 0x46 &&
+      bytes[3] === 0x46 &&
+      bytes[8] === 0x57 &&
+      bytes[9] === 0x45 &&
+      bytes[10] === 0x42 &&
+      bytes[11] === 0x50)
+  );
+}
+
+async function fetchForMediaProbe(url: string, init: RequestInit = {}) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), MEDIA_PROBE_TIMEOUT_MS);
+
+  try {
+    return await fetch(url, {
+      ...init,
+      headers: {
+        Accept: "*/*",
+        "User-Agent": "Mozilla/5.0 Boxofice/1.0",
+        ...init.headers,
+      },
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+function firstPlaylistMediaUrl(playlist: string, playlistUrl: string) {
+  for (const line of playlist.split(/\r?\n/)) {
+    const trimmed = line.trim();
+
+    if (!trimmed || trimmed.startsWith("#")) {
+      continue;
+    }
+
+    return new URL(trimmed, playlistUrl).toString();
+  }
+
+  return null;
+}
+
+async function isPlayableMediaUrl(url: string, depth = 0): Promise<boolean> {
+  if (depth > 2) {
+    return false;
+  }
+
+  const isPlaylist = sourceTypeFromUrl(url) === "application/x-mpegURL";
+  const response = await fetchForMediaProbe(url, {
+    headers: isPlaylist ? undefined : { Range: "bytes=0-1023" },
+  });
+  const contentType = response.headers.get("content-type") ?? "";
+
+  if (!response.ok || isLikelyBadMediaContentType(contentType)) {
+    return false;
+  }
+
+  if (isPlaylist || contentType.toLowerCase().includes("mpegurl")) {
+    const playlist = await response.text();
+
+    if (!playlist.includes("#EXTM3U")) {
+      return false;
+    }
+
+    const firstMediaUrl = firstPlaylistMediaUrl(playlist, url);
+
+    if (!firstMediaUrl) {
+      return false;
+    }
+
+    return isPlayableMediaUrl(firstMediaUrl, depth + 1);
+  }
+
+  const bytes = new Uint8Array(await response.arrayBuffer());
+
+  return bytes.length > 0 && !looksLikeImageBytes(bytes);
+}
+
+async function filterPlayableSources(sources: StreamSource[]) {
+  const checkedSources = await Promise.all(
+    sources.map(async (source) => {
+      try {
+        return (await isPlayableMediaUrl(source.url)) ? source : null;
+      } catch {
+        return null;
+      }
+    }),
+  );
+
+  return checkedSources.filter(
+    (source): source is StreamSource => source !== null,
+  );
+}
+
 export async function fetchHome(page = 1): Promise<MovieListResult> {
   const response = await requestJson<unknown>(`/lk21/home?page=${page}`);
   return normalizeMovieListResponse(response);
@@ -435,10 +554,15 @@ export async function fetchPlayableStream(
   const initialStream = await fetchStream(sourceUrl, options);
 
   if (initialStream.sources.length > 0) {
-    return {
-      ...initialStream,
-      resolvedFrom: sourceUrl,
-    };
+    const playableSources = await filterPlayableSources(initialStream.sources);
+
+    if (playableSources.length > 0) {
+      return {
+        ...initialStream,
+        sources: playableSources,
+        resolvedFrom: sourceUrl,
+      };
+    }
   }
 
   const detail = await fetchDetail(sourceUrl);
@@ -459,8 +583,19 @@ export async function fetchPlayableStream(
     };
   }
 
+  const playableSources = await filterPlayableSources(playerStream.sources);
+
+  if (playableSources.length === 0) {
+    return {
+      ...playerStream,
+      sources: [],
+      resolvedFrom: detail.streams,
+    };
+  }
+
   return {
     ...playerStream,
+    sources: playableSources,
     resolvedFrom: detail.streams,
   };
 }

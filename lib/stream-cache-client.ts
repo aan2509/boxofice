@@ -8,6 +8,7 @@ export type CachedStreamSource = {
 };
 
 export type CachedStreamResponse = {
+  iframe?: string;
   originalUrl?: string;
   resolvedFrom?: string;
   sources: CachedStreamSource[];
@@ -19,7 +20,7 @@ type StreamCacheEntry = {
 };
 
 const STREAM_CACHE_TTL_MS = 10 * 60 * 1000;
-const STREAM_CACHE_PREFIX = "boxofice:stream:";
+const STREAM_CACHE_PREFIX = "boxofice:stream:v2:";
 const memoryCache = new Map<string, StreamCacheEntry>();
 
 type StreamLookup = {
@@ -35,7 +36,11 @@ function storageKey(key: string) {
 function isCacheEntryValid(
   entry: StreamCacheEntry | null | undefined,
 ): entry is StreamCacheEntry {
-  return Boolean(entry && entry.expiresAt > Date.now() && entry.value.sources.length);
+  return Boolean(
+    entry &&
+      entry.expiresAt > Date.now() &&
+      (entry.value.sources.length || entry.value.iframe),
+  );
 }
 
 function readSessionCache(key: string) {
@@ -105,7 +110,7 @@ export function writeCachedStream(
   value: CachedStreamResponse,
   ttlMs = STREAM_CACHE_TTL_MS,
 ) {
-  if (!value.sources.length) {
+  if (!value.sources.length && !value.iframe) {
     return;
   }
 
@@ -143,7 +148,7 @@ export async function prefetchCachedStream(lookup: StreamLookup) {
 
   const payload = (await response.json()) as CachedStreamResponse;
 
-  if (!payload.sources.length) {
+  if (!payload.sources.length && !payload.iframe) {
     throw new Error("Sumber video belum tersedia.");
   }
 

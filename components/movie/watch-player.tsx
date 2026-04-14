@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { RotateCcw, RotateCw } from "lucide-react";
+import { ExternalLink, RotateCcw, RotateCw } from "lucide-react";
 import type Player from "video.js/dist/types/player";
 
 import { Button } from "@/components/ui/button";
@@ -56,10 +56,7 @@ function toVideoJsSource(source: CachedStreamSource) {
     source.type ?? (isHlsSource(source) ? "application/x-mpegURL" : "video/mp4");
 
   return {
-    src:
-      type === "application/x-mpegURL"
-        ? `/api/hls?url=${encodeURIComponent(source.url)}`
-        : source.url,
+    src: `/api/hls?url=${encodeURIComponent(source.url)}`,
     type,
   };
 }
@@ -99,6 +96,7 @@ export function WatchPlayer({ movieId, poster, sourceUrl }: WatchPlayerProps) {
   const [seekFeedback, setSeekFeedback] = React.useState<SeekFeedback | null>(
     null,
   );
+  const [failedSourceUrls, setFailedSourceUrls] = React.useState<string[]>([]);
   const [retryCount, setRetryCount] = React.useState(0);
 
   React.useEffect(() => {
@@ -106,6 +104,7 @@ export function WatchPlayer({ movieId, poster, sourceUrl }: WatchPlayerProps) {
 
     async function loadStream() {
       setError(null);
+      setFailedSourceUrls([]);
 
       if (!streamCacheKey || (!movieId && !sourceUrl)) {
         setError("Sumber video belum valid.");
@@ -161,6 +160,34 @@ export function WatchPlayer({ movieId, poster, sourceUrl }: WatchPlayerProps) {
     sources[0] ??
     null;
 
+  const fallbackPlayerUrl = React.useMemo(
+    () => stream?.iframe ?? stream?.resolvedFrom ?? stream?.originalUrl ?? null,
+    [stream],
+  );
+
+  const moveToNextPlayableSource = React.useCallback(
+    (failedUrl: string) => {
+      const nextFailedUrls = Array.from(
+        new Set([...failedSourceUrls, failedUrl]),
+      );
+      const nextSource = sources.find(
+        (source) => !nextFailedUrls.includes(source.url),
+      );
+
+      setFailedSourceUrls(nextFailedUrls);
+
+      if (nextSource) {
+        setSelectedSourceUrl(nextSource.url);
+        return;
+      }
+
+      setError(
+        "Sumber video langsung dari upstream belum bisa diputar di pemutar ini.",
+      );
+    },
+    [failedSourceUrls, sources],
+  );
+
   React.useEffect(() => {
     if (!videoRef.current || !sources.length || !selectedSource) {
       return;
@@ -193,6 +220,9 @@ export function WatchPlayer({ movieId, poster, sourceUrl }: WatchPlayerProps) {
         player.hlsQualitySelector?.({ displayCurrentQuality: true });
       });
 
+      const handlePlayerError = () => {
+        moveToNextPlayableSource(selectedSource.url);
+      };
       const handleFullscreenChange = () => {
         if (player.isFullscreen()) {
           void lockLandscapeIfPossible();
@@ -202,6 +232,7 @@ export function WatchPlayer({ movieId, poster, sourceUrl }: WatchPlayerProps) {
         unlockOrientationIfPossible();
       };
 
+      player.on("error", handlePlayerError);
       player.on("fullscreenchange", handleFullscreenChange);
     }
 
@@ -213,7 +244,7 @@ export function WatchPlayer({ movieId, poster, sourceUrl }: WatchPlayerProps) {
       unlockOrientationIfPossible();
       playerRef.current = null;
     };
-  }, [poster, selectedSource, sources]);
+  }, [moveToNextPlayableSource, poster, selectedSource, sources]);
 
   React.useEffect(() => {
     if (!seekFeedback) {
@@ -355,6 +386,49 @@ export function WatchPlayer({ movieId, poster, sourceUrl }: WatchPlayerProps) {
           <RotateCw className="size-4" />
           Coba lagi
         </Button>
+        {fallbackPlayerUrl ? (
+          <Button asChild variant="secondary">
+            <a
+              href={fallbackPlayerUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <ExternalLink className="size-4" />
+              Buka player cadangan
+            </a>
+          </Button>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (stream && !sources.length) {
+    return (
+      <div className="flex aspect-video w-full flex-col items-center justify-center gap-4 rounded-md bg-neutral-950 px-6 text-center ring-1 ring-white/10">
+        <p className="text-2xl font-semibold text-white">
+          Source langsung belum tersedia
+        </p>
+        <p className="max-w-md text-sm leading-6 text-neutral-400">
+          Link video dari upstream untuk judul ini belum cocok untuk pemutar
+          internal. Kamu tetap bisa mencoba player cadangan.
+        </p>
+        {fallbackPlayerUrl ? (
+          <Button asChild>
+            <a
+              href={fallbackPlayerUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <ExternalLink className="size-4" />
+              Buka player cadangan
+            </a>
+          </Button>
+        ) : (
+          <Button onClick={() => setRetryCount((value) => value + 1)}>
+            <RotateCw className="size-4" />
+            Coba lagi
+          </Button>
+        )}
       </div>
     );
   }
