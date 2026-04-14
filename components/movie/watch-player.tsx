@@ -243,6 +243,7 @@ export function WatchPlayer({
     const activeSource = selectedSource;
     let disposed = false;
     let hls: Hls | null = null;
+    const resumeTimeoutIds: number[] = [];
     const resumeSnapshot =
       resumeSnapshotRef.current ??
       (!initialResumeAppliedRef.current
@@ -254,6 +255,17 @@ export function WatchPlayer({
     resumeSnapshotRef.current = null;
     initialResumeAppliedRef.current = true;
     const mediaUrl = toMediaSourceUrl(activeSource);
+    const resumeEvents = [
+      "durationchange",
+      "loadedmetadata",
+      "loadeddata",
+      "canplay",
+    ] as const;
+
+    function scheduleResumePlayback(delayMs: number) {
+      const timeoutId = window.setTimeout(resumePlayback, delayMs);
+      resumeTimeoutIds.push(timeoutId);
+    }
 
     function resumePlayback() {
       if (!resumeSnapshot || disposed) {
@@ -261,7 +273,14 @@ export function WatchPlayer({
       }
 
       if (resumeSnapshot.time > 1) {
-        video.currentTime = resumeSnapshot.time;
+        try {
+          if (Math.abs(video.currentTime - resumeSnapshot.time) > 1) {
+            video.currentTime = resumeSnapshot.time;
+          }
+        } catch {
+          scheduleResumePlayback(300);
+          return;
+        }
       }
 
       if (resumeSnapshot.shouldPlay) {
@@ -281,10 +300,14 @@ export function WatchPlayer({
       video.preload = "metadata";
       video.poster = poster ?? "";
       video.addEventListener("error", handleNativeError);
+      resumeEvents.forEach((eventName) => {
+        video.addEventListener(eventName, resumePlayback);
+      });
+      scheduleResumePlayback(450);
+      scheduleResumePlayback(1200);
 
       if (!isHlsSource(activeSource)) {
         video.src = mediaUrl;
-        video.addEventListener("loadedmetadata", resumePlayback, { once: true });
         video.load();
         return;
       }
@@ -304,7 +327,10 @@ export function WatchPlayer({
         hlsRef.current = hls;
         hls.attachMedia(video);
         hls.loadSource(mediaUrl);
-        hls.on(Hls.Events.MANIFEST_PARSED, resumePlayback);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          resumePlayback();
+          scheduleResumePlayback(450);
+        });
         hls.on(Hls.Events.ERROR, (_event, data) => {
           if (data.fatal) {
             hls?.destroy();
@@ -320,7 +346,6 @@ export function WatchPlayer({
         video.canPlayType("application/x-mpegURL")
       ) {
         video.src = mediaUrl;
-        video.addEventListener("loadedmetadata", resumePlayback, { once: true });
         video.load();
         return;
       }
@@ -332,6 +357,12 @@ export function WatchPlayer({
 
     return () => {
       disposed = true;
+      resumeTimeoutIds.forEach((timeoutId) => {
+        window.clearTimeout(timeoutId);
+      });
+      resumeEvents.forEach((eventName) => {
+        video.removeEventListener(eventName, resumePlayback);
+      });
       video.removeEventListener("error", handleNativeError);
       hls?.destroy();
       hlsRef.current = null;

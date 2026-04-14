@@ -33,6 +33,12 @@ export function DetailWatchActions({
   const [isPlayerOpen, setIsPlayerOpen] = React.useState(initialOpen);
 
   React.useEffect(() => {
+    if (initialOpen) {
+      setIsPlayerOpen(true);
+    }
+  }, [initialOpen]);
+
+  React.useEffect(() => {
     const warmupId = window.setTimeout(() => {
       void prefetchCachedStream({
         cacheKey: getMovieStreamCacheKey(movieId),
@@ -109,6 +115,7 @@ export function DetailWatchActions({
       {isPlayerOpen ? (
         <div ref={playerRef} className="pt-1">
           <WatchPlayer
+            key={`${movieId}:${initialProgressSeconds}`}
             autoPlay
             defaultQuality="480p"
             initialProgressSeconds={initialProgressSeconds}
