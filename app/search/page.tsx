@@ -1,4 +1,5 @@
 import { UpstreamSearch } from "@/components/search/upstream-search";
+import { requireUserSession } from "@/lib/user-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +21,7 @@ function parsePage(value: string | undefined) {
 }
 
 export default async function SearchPage({ searchParams }: SearchPageProps) {
-  const params = await searchParams;
+  const [params] = await Promise.all([searchParams, requireUserSession()]);
 
   return (
     <main className="min-h-screen bg-black text-white">

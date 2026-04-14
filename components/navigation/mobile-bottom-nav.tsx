@@ -49,10 +49,7 @@ const items: NavItem[] = [
     href: "/profile",
     icon: UserRound,
     label: "Profil",
-    match: (pathname: string) =>
-      pathname.startsWith("/profile") ||
-      pathname.startsWith("/login") ||
-      pathname.startsWith("/signup"),
+    match: (pathname: string) => pathname.startsWith("/profile"),
   },
 ];
 

@@ -8,6 +8,7 @@ import { WatchPlayer } from "@/components/movie/watch-player";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { fetchDetail } from "@/lib/movie-api";
+import { requireUserSession } from "@/lib/user-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -55,7 +56,7 @@ async function SourceSynopsis({
 export default async function SourceWatchPage({
   searchParams,
 }: SourceWatchPageProps) {
-  const params = await searchParams;
+  const [params] = await Promise.all([searchParams, requireUserSession()]);
   const sourceUrl = cleanParam(params.sourceUrl);
 
   if (!sourceUrl) {

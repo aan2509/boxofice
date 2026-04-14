@@ -7,6 +7,7 @@ import { MovieCardLink } from "@/components/movie/movie-card-link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getFeedPageData, isFeedSlug } from "@/lib/movie-feeds";
+import { requireUserSession } from "@/lib/user-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,7 @@ type BrowsePageProps = {
 };
 
 export default async function BrowsePage({ params }: BrowsePageProps) {
-  const { slug } = await params;
+  const [{ slug }] = await Promise.all([params, requireUserSession()]);
 
   if (!isFeedSlug(slug)) {
     notFound();

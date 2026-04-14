@@ -8,7 +8,7 @@ import { SynopsisAccordion } from "@/components/movie/synopsis-accordion";
 import { Badge } from "@/components/ui/badge";
 import { getRelatedMovies, type MovieCard } from "@/lib/movie-feeds";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUserSession } from "@/lib/user-auth";
+import { requireUserSession } from "@/lib/user-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -102,7 +102,7 @@ export default async function MoviePage({ params, searchParams }: MoviePageProps
   const [{ id }, query, user] = await Promise.all([
     params,
     searchParams,
-    getCurrentUserSession(),
+    requireUserSession(),
   ]);
   const movie = await prisma.movie.findUnique({
     where: { id },
@@ -130,19 +130,17 @@ export default async function MoviePage({ params, searchParams }: MoviePageProps
   }
 
   const [favorite, relatedMovies] = await Promise.all([
-    user
-      ? prisma.userFavorite.findUnique({
-          where: {
-            userId_movieId: {
-              movieId: movie.id,
-              userId: user.id,
-            },
-          },
-          select: {
-            id: true,
-          },
-        })
-      : Promise.resolve(null),
+    prisma.userFavorite.findUnique({
+      where: {
+        userId_movieId: {
+          movieId: movie.id,
+          userId: user.id,
+        },
+      },
+      select: {
+        id: true,
+      },
+    }),
     getRelatedMovies({
       currentMovieId: movie.id,
       genre: movie.genre,

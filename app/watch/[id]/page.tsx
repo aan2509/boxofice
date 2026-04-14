@@ -7,6 +7,7 @@ import { WatchPlayer } from "@/components/movie/watch-player";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { prisma } from "@/lib/prisma";
+import { requireUserSession } from "@/lib/user-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -57,7 +58,7 @@ async function getWatchData(id: string) {
 }
 
 export default async function WatchPage({ params }: WatchPageProps) {
-  const { id } = await params;
+  const [{ id }] = await Promise.all([params, requireUserSession()]);
   const data = await getWatchData(id);
 
   if (!data) {

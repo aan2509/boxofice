@@ -1,6 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { registerAffiliateClick } from "@/lib/affiliate";
+import {
+  buildAffiliateStartParam,
+  buildTelegramBotChatUrl,
+} from "@/lib/telegram-miniapp";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -12,7 +16,7 @@ type ReferralRouteContext = {
 };
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: ReferralRouteContext,
 ) {
   const { code } = await params;
@@ -22,9 +26,7 @@ export async function GET(
     await registerAffiliateClick(normalizedCode).catch(() => undefined);
   }
 
-  const redirectUrl = request.nextUrl.clone();
-  redirectUrl.pathname = "/signup";
-  redirectUrl.search = `?ref=${encodeURIComponent(normalizedCode)}`;
-
-  return NextResponse.redirect(redirectUrl);
+  return NextResponse.redirect(
+    buildTelegramBotChatUrl(buildAffiliateStartParam(normalizedCode)),
+  );
 }

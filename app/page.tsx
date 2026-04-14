@@ -3,8 +3,14 @@ import Link from "next/link";
 import { ArrowRight, Play } from "lucide-react";
 
 import { MovieCardLink } from "@/components/movie/movie-card-link";
+import { TelegramEntryGate } from "@/components/telegram/telegram-entry-gate";
 import { Button } from "@/components/ui/button";
 import { getHomepageMovieData } from "@/lib/movie-feeds";
+import {
+  buildTelegramBotChatUrl,
+  buildTelegramMiniAppUrl,
+} from "@/lib/telegram-miniapp";
+import { getCurrentUserSession } from "@/lib/user-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -56,6 +62,18 @@ function MovieRail({
 }
 
 export default async function Home() {
+  const user = await getCurrentUserSession();
+
+  if (!user) {
+    return (
+      <TelegramEntryGate
+        adminLoginUrl="/admin/login"
+        botChatUrl={buildTelegramBotChatUrl()}
+        miniAppUrl={buildTelegramMiniAppUrl()}
+      />
+    );
+  }
+
   const { featured, homeMovies, popularMovies, newMovies } =
     await getHomepageMovieData(18);
 

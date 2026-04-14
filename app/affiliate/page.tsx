@@ -47,13 +47,13 @@ function payoutStatusLabel(status: string) {
 const affiliateSteps = [
   {
     description:
-      "Sebarkan link affiliate kamu ke Telegram, WhatsApp, TikTok bio, atau story.",
+      "Sebarkan deep link Telegram kamu ke grup, channel, WhatsApp, TikTok bio, atau story.",
     icon: MousePointerClick,
     title: "Bagikan link",
   },
   {
     description:
-      "User baru masuk lewat link kamu lalu membuat akun atau membuka mini app.",
+      "User baru masuk lewat bot kamu lalu langsung membuka Mini App dengan akun Telegram mereka.",
     icon: UserPlus,
     title: "Teman mendaftar",
   },
@@ -115,8 +115,8 @@ export default async function AffiliatePage() {
               Box Office Partner
             </h1>
             <p className="mt-2 text-sm leading-6 text-neutral-400">
-              Bangun jalur promosi kamu sendiri, pantau hasilnya, lalu tarik
-              komisinya dari satu dashboard.
+              Bagikan bot dan Mini App Box Office, pantau hasilnya, lalu tarik
+              komisinya dari satu dashboard Telegram-first.
             </p>
           </div>
           <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-white/70">
@@ -152,7 +152,7 @@ export default async function AffiliatePage() {
           }))}
           pendingBalanceLabel={formatCurrency(profile.pendingBalance)}
           referralCode={profile.referralCode}
-          referralPath={getAffiliateSharePath(profile.referralCode)}
+          referralUrl={getAffiliateSharePath(profile.referralCode)}
           signups={profile.totalSignups}
           totalCommissionLabel={formatCurrency(profile.totalCommission)}
           withdrawnBalanceLabel={formatCurrency(profile.withdrawnBalance)}

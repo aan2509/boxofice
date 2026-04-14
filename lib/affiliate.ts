@@ -1,6 +1,10 @@
 import { randomBytes } from "node:crypto";
 
 import { prisma } from "@/lib/prisma";
+import {
+  buildAffiliateStartParam,
+  buildTelegramBotChatUrl,
+} from "@/lib/telegram-miniapp";
 
 export const AFFILIATE_MINIMUM_WITHDRAW = 50_000;
 export const DEFAULT_AFFILIATE_COMMISSION_RATE = 25;
@@ -81,7 +85,11 @@ async function generateUniqueReferralCode(name: string) {
 }
 
 export function getAffiliateSharePath(referralCode: string) {
-  return `/r/${encodeURIComponent(referralCode)}`;
+  try {
+    return buildTelegramBotChatUrl(buildAffiliateStartParam(referralCode));
+  } catch {
+    return `/r/${encodeURIComponent(referralCode)}`;
+  }
 }
 
 export async function ensureAffiliateProgramSettings() {

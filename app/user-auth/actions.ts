@@ -85,7 +85,7 @@ export async function signupUserAction(
 
 export async function logoutUserAction() {
   await logoutCurrentUser();
-  redirect("/login");
+  redirect("/");
 }
 
 export async function changePasswordAction(

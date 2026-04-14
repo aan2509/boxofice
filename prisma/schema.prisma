@@ -59,9 +59,16 @@ model MovieStreamCache {
 model User {
   id                String             @id @default(uuid())
   name              String
-  email             String             @unique
-  passwordHash      String
-  passwordSalt      String
+  email             String?            @unique
+  passwordHash      String?
+  passwordSalt      String?
+  telegramId        String?            @unique
+  telegramUsername  String?
+  telegramFirstName String?
+  telegramLastName  String?
+  telegramPhotoUrl  String?            @db.Text
+  telegramAuthDate  DateTime?
+  lastTelegramAuthAt DateTime?
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
   sessions          UserSession[]

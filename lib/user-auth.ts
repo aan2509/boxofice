@@ -4,14 +4,20 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
+import type { ValidatedTelegramInitData } from "@/lib/telegram-miniapp";
 
 export const USER_SESSION_COOKIE = "boxofice_user_session";
 export const USER_SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
 
 export type AuthUser = {
-  email: string;
+  email: string | null;
   id: string;
   name: string;
+  telegramFirstName: string | null;
+  telegramId: string | null;
+  telegramLastName: string | null;
+  telegramPhotoUrl: string | null;
+  telegramUsername: string | null;
 };
 
 function normalizeEmail(email: string) {
@@ -34,6 +40,23 @@ function getCookieOptions() {
     sameSite: "lax" as const,
     secure: process.env.NODE_ENV === "production",
   };
+}
+
+function buildTelegramDisplayName(input: ValidatedTelegramInitData["user"]) {
+  const fullName = [input.first_name, input.last_name]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+
+  if (fullName) {
+    return fullName;
+  }
+
+  if (input.username) {
+    return input.username;
+  }
+
+  return `Telegram ${input.id}`;
 }
 
 export async function registerUser(input: {
@@ -71,6 +94,11 @@ export async function registerUser(input: {
       email: true,
       id: true,
       name: true,
+      telegramFirstName: true,
+      telegramId: true,
+      telegramLastName: true,
+      telegramPhotoUrl: true,
+      telegramUsername: true,
     },
   });
 }
@@ -87,10 +115,15 @@ export async function verifyUserCredentials(input: {
       name: true,
       passwordHash: true,
       passwordSalt: true,
+      telegramFirstName: true,
+      telegramId: true,
+      telegramLastName: true,
+      telegramPhotoUrl: true,
+      telegramUsername: true,
     },
   });
 
-  if (!user) {
+  if (!user || !user.passwordHash || !user.passwordSalt) {
     throw new Error("Email atau password tidak cocok.");
   }
 
@@ -108,7 +141,57 @@ export async function verifyUserCredentials(input: {
     email: user.email,
     id: user.id,
     name: user.name,
-  };
+    telegramFirstName: user.telegramFirstName,
+    telegramId: user.telegramId,
+    telegramLastName: user.telegramLastName,
+    telegramPhotoUrl: user.telegramPhotoUrl,
+    telegramUsername: user.telegramUsername,
+  } satisfies AuthUser;
+}
+
+export async function upsertTelegramUser(
+  telegram: ValidatedTelegramInitData,
+) {
+  const telegramId = String(telegram.user.id);
+  const name = buildTelegramDisplayName(telegram.user);
+
+  return prisma.user.upsert({
+    where: {
+      telegramId,
+    },
+    update: {
+      lastTelegramAuthAt: new Date(),
+      name,
+      telegramAuthDate: telegram.authDate,
+      telegramFirstName: telegram.user.first_name ?? null,
+      telegramLastName: telegram.user.last_name ?? null,
+      telegramPhotoUrl: telegram.user.photo_url ?? null,
+      telegramUsername: telegram.user.username ?? null,
+    },
+    create: {
+      email: null,
+      lastTelegramAuthAt: new Date(),
+      name,
+      passwordHash: null,
+      passwordSalt: null,
+      telegramAuthDate: telegram.authDate,
+      telegramFirstName: telegram.user.first_name ?? null,
+      telegramId,
+      telegramLastName: telegram.user.last_name ?? null,
+      telegramPhotoUrl: telegram.user.photo_url ?? null,
+      telegramUsername: telegram.user.username ?? null,
+    },
+    select: {
+      email: true,
+      id: true,
+      name: true,
+      telegramFirstName: true,
+      telegramId: true,
+      telegramLastName: true,
+      telegramPhotoUrl: true,
+      telegramUsername: true,
+    },
+  });
 }
 
 export async function createUserSession(user: AuthUser) {
@@ -151,6 +234,11 @@ export async function getCurrentUserSession() {
           email: true,
           id: true,
           name: true,
+          telegramFirstName: true,
+          telegramId: true,
+          telegramLastName: true,
+          telegramPhotoUrl: true,
+          telegramUsername: true,
         },
       },
     },
@@ -175,7 +263,7 @@ export async function requireUserSession() {
   const user = await getCurrentUserSession();
 
   if (!user) {
-    redirect("/login");
+    redirect("/");
   }
 
   return user;
@@ -216,6 +304,10 @@ export async function changeUserPassword(input: {
 
   if (!user) {
     throw new Error("User tidak ditemukan.");
+  }
+
+  if (!user.passwordHash || !user.passwordSalt) {
+    throw new Error("Akun Telegram tidak memakai password lokal.");
   }
 
   const currentHash = hashPassword(input.currentPassword, user.passwordSalt);

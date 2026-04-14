@@ -46,7 +46,7 @@ type AffiliateDashboardProps = {
   payouts: AffiliatePayoutItem[];
   pendingBalanceLabel: string;
   referralCode: string;
-  referralPath: string;
+  referralUrl: string;
   signups: number;
   totalCommissionLabel: string;
   withdrawnBalanceLabel: string;
@@ -82,7 +82,7 @@ export function AffiliateDashboard({
   payouts,
   pendingBalanceLabel,
   referralCode,
-  referralPath,
+  referralUrl,
   signups,
   totalCommissionLabel,
   withdrawnBalanceLabel,
@@ -91,15 +91,13 @@ export function AffiliateDashboard({
     requestAffiliatePayoutAction,
     initialActionState,
   );
-  const [link, setLink] = React.useState(referralPath);
+  const [link, setLink] = React.useState(referralUrl);
   const [copied, setCopied] = React.useState(false);
   const [shareFeedback, setShareFeedback] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    if (typeof window !== "undefined") {
-      setLink(`${window.location.origin}${referralPath}`);
-    }
-  }, [referralPath]);
+    setLink(referralUrl);
+  }, [referralUrl]);
 
   React.useEffect(() => {
     if (!copied) {
@@ -140,8 +138,8 @@ export function AffiliateDashboard({
     try {
       if (navigator.share) {
         await navigator.share({
-          text: "Daftar lewat link ini untuk masuk ke Box Office.",
-          title: "Box Office Affiliate",
+          text: "Buka Mini App Box Office dari link Telegram ini.",
+          title: "Box Office Telegram Affiliate",
           url: link,
         });
       } else {
@@ -187,9 +185,12 @@ export function AffiliateDashboard({
       <section className="rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(24,24,24,0.94),rgba(8,8,8,0.96))] p-5 shadow-[0_18px_50px_rgba(0,0,0,0.4)]">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-white">Link referral</p>
+            <p className="text-sm font-semibold text-white">
+              Link referral Telegram
+            </p>
             <p className="mt-1 text-sm leading-6 text-neutral-400">
-              Bagikan link ini ke Telegram, WhatsApp, TikTok bio, atau story.
+              Arahkan orang langsung ke bot dan Mini App Box Office dari link
+              ini.
             </p>
           </div>
           <span className="rounded-full bg-red-500/10 px-2.5 py-1 text-[11px] font-semibold text-red-200 ring-1 ring-red-400/10">
@@ -199,7 +200,7 @@ export function AffiliateDashboard({
 
         <div className="mt-4 rounded-[18px] border border-white/10 bg-black/25 p-3">
           <p className="text-[11px] uppercase tracking-[0.08em] text-neutral-500">
-            URL referral
+            Deep link
           </p>
           <p className="mt-2 break-all text-sm leading-6 text-white">{link}</p>
         </div>

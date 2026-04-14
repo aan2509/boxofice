@@ -1,6 +1,5 @@
 import Image from "next/image";
-import Link from "next/link";
-import { ChevronRight, KeyRound, LogOut, Mail } from "lucide-react";
+import { LogOut, MessageCircle, Sparkles, UserRound } from "lucide-react";
 
 import { logoutUserAction } from "@/app/user-auth/actions";
 import { Button } from "@/components/ui/button";
@@ -45,8 +44,6 @@ export default async function ProfilePage() {
       )}
 
       <section className="relative z-10 mx-auto w-full max-w-md">
-
-
         {stackMovies.length ? (
           <div className="pointer-events-none mt-4 flex gap-3 opacity-35">
             {stackMovies.map((movie, index) => (
@@ -72,21 +69,39 @@ export default async function ProfilePage() {
 
         <div className="mt-5 rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(20,20,20,0.82),rgba(8,8,8,0.95))] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.5)] backdrop-blur-xl">
           <p className="text-xs font-semibold uppercase tracking-[0.08em] text-red-300">
-            Akun
+            Profil
           </p>
           <div className="mt-4 flex items-start justify-between gap-4">
             <div className="flex min-w-0 items-center gap-3">
-              <div className="flex size-14 shrink-0 items-center justify-center rounded-full bg-white/10 text-base font-bold text-white ring-1 ring-white/10">
-                {initials(user.name)}
-              </div>
+              {user.telegramPhotoUrl ? (
+                <div className="relative size-14 shrink-0 overflow-hidden rounded-full ring-1 ring-white/10">
+                  <Image
+                    src={user.telegramPhotoUrl}
+                    alt={user.name}
+                    fill
+                    sizes="56px"
+                    className="object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="flex size-14 shrink-0 items-center justify-center rounded-full bg-white/10 text-base font-bold text-white ring-1 ring-white/10">
+                  {initials(user.name)}
+                </div>
+              )}
               <div className="min-w-0">
                 <p className="truncate text-lg font-semibold text-white">
                   {user.name}
                 </p>
-                <p className="mt-1 inline-flex max-w-full items-center gap-2 truncate text-sm text-neutral-300">
-                  <Mail className="size-4 shrink-0" />
-                  <span className="truncate">{user.email}</span>
-                </p>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <span className="inline-flex rounded-full border border-white/10 bg-white/[0.06] px-2.5 py-1 text-[11px] font-semibold text-white/85">
+                    Telegram login
+                  </span>
+                  <span className="truncate text-sm text-neutral-300">
+                    {user.telegramUsername
+                      ? `@${user.telegramUsername}`
+                      : user.email ?? `ID ${user.telegramId}`}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -101,31 +116,42 @@ export default async function ProfilePage() {
             </form>
           </div>
 
-          <p className="mt-5 text-sm leading-6 text-neutral-300">
-            Simpan akunmu untuk lanjut menonton lebih cepat di perangkat ini.
-          </p>
-        </div>
+          <div className="mt-5 rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,rgba(80,22,114,0.28),rgba(21,18,28,0.86))] p-4">
+            <p className="inline-flex items-center gap-2 text-sm font-semibold text-white">
+              <Sparkles className="size-4 text-orange-300" />
+              Akun Telegram aktif
+            </p>
+            <p className="mt-2 text-sm leading-6 text-neutral-200">
+              Semua koleksi, history tontonan, dan affiliate sekarang mengikuti
+              identitas Telegram kamu. Tidak perlu signup terpisah lagi.
+            </p>
+          </div>
 
-        <div className="mt-4">
-          <Link
-            href="/profile/password"
-            className="flex items-center justify-between rounded-[18px] border border-white/10 bg-white/[0.05] px-4 py-4 transition-colors hover:bg-white/[0.08]"
-          >
-            <span className="inline-flex items-center gap-3">
-              <span className="flex size-10 items-center justify-center rounded-full bg-red-500/10 text-red-200 ring-1 ring-red-400/10">
-                <KeyRound className="size-5" />
-              </span>
-              <span>
-                <span className="block text-sm font-semibold text-white">
-                  Ganti Password
-                </span>
-                <span className="block text-xs text-neutral-400">
-                  Perbarui akses akunmu
-                </span>
-              </span>
-            </span>
-            <ChevronRight className="size-5 text-neutral-500" />
-          </Link>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-[20px] border border-white/10 bg-white/[0.05] p-4">
+              <p className="inline-flex items-center gap-2 text-sm font-semibold text-white">
+                <MessageCircle className="size-4 text-red-300" />
+                Username
+              </p>
+              <p className="mt-2 text-sm text-neutral-300">
+                {user.telegramUsername
+                  ? `@${user.telegramUsername}`
+                  : "Belum ada username publik"}
+              </p>
+            </div>
+
+            <div className="rounded-[20px] border border-white/10 bg-white/[0.05] p-4">
+              <p className="inline-flex items-center gap-2 text-sm font-semibold text-white">
+                <UserRound className="size-4 text-red-300" />
+                Identitas
+              </p>
+              <p className="mt-2 text-sm text-neutral-300">
+                {user.telegramId
+                  ? `Telegram ID ${user.telegramId}`
+                  : "Akun web lokal"}
+              </p>
+            </div>
+          </div>
         </div>
       </section>
     </main>
