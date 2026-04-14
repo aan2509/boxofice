@@ -1,8 +1,6 @@
 import Image from "next/image";
-import { LogOut, MessageCircle, Sparkles, UserRound } from "lucide-react";
+import { MessageCircle, Sparkles, UserRound } from "lucide-react";
 
-import { logoutUserAction } from "@/app/user-auth/actions";
-import { Button } from "@/components/ui/button";
 import { getCinematicBackdropMovies } from "@/lib/movie-feeds";
 import { requireUserSession } from "@/lib/user-auth";
 
@@ -68,9 +66,7 @@ export default async function ProfilePage() {
         ) : null}
 
         <div className="mt-5 rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(20,20,20,0.82),rgba(8,8,8,0.95))] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.5)] backdrop-blur-xl">
-          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-red-300">
-            Profil
-          </p>
+
           <div className="mt-4 flex items-start justify-between gap-4">
             <div className="flex min-w-0 items-center gap-3">
               {user.telegramPhotoUrl ? (
@@ -93,9 +89,7 @@ export default async function ProfilePage() {
                   {user.name}
                 </p>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <span className="inline-flex rounded-full border border-white/10 bg-white/[0.06] px-2.5 py-1 text-[11px] font-semibold text-white/85">
-                    Telegram login
-                  </span>
+
                   <span className="truncate text-sm text-neutral-300">
                     {user.telegramUsername
                       ? `@${user.telegramUsername}`
@@ -104,26 +98,15 @@ export default async function ProfilePage() {
                 </div>
               </div>
             </div>
-
-            <form action={logoutUserAction}>
-              <Button
-                type="submit"
-                className="h-10 rounded-md bg-red-600 px-4 text-white shadow-[0_12px_24px_rgba(220,38,38,0.28)] hover:bg-red-500"
-              >
-                <LogOut className="size-4" />
-                Keluar
-              </Button>
-            </form>
           </div>
 
           <div className="mt-5 rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,rgba(80,22,114,0.28),rgba(21,18,28,0.86))] p-4">
             <p className="inline-flex items-center gap-2 text-sm font-semibold text-white">
               <Sparkles className="size-4 text-orange-300" />
-              Akun Telegram aktif
+              Status VIP
             </p>
             <p className="mt-2 text-sm leading-6 text-neutral-200">
-              Semua koleksi, history tontonan, dan affiliate sekarang mengikuti
-              identitas Telegram kamu. Tidak perlu signup terpisah lagi.
+              Program dalam penyiapan
             </p>
           </div>
 

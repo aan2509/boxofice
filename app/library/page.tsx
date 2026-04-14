@@ -127,7 +127,7 @@ function CollectionGrid({
   if (!favorites.length) {
     return (
       <EmptyState
-        description="Tekan Simpan di halaman detail film. Semua judul yang kamu pilih akan muncul di sini."
+        description="Tekan Simpan di halaman film agar kamu bisa menontonnya lagi."
         title="Koleksimu masih kosong"
       />
     );
@@ -222,7 +222,7 @@ function EmptyState({
         prefetch
         className="mt-5 inline-flex h-10 items-center justify-center rounded-md bg-red-600 px-4 text-sm font-semibold text-white"
       >
-        Cari tontonan
+        Cari Film
       </Link>
     </div>
   );
@@ -273,7 +273,7 @@ export default async function LibraryPage({ searchParams }: LibraryPageProps) {
   return (
     <main className="min-h-screen bg-black px-4 pb-28 pt-6 text-white sm:px-8 sm:py-8 lg:px-10">
       <section className="mx-auto w-full max-w-6xl">
-        <p className="text-sm font-semibold text-red-400">Perpustakaan</p>
+        <p className="text-sm font-semibold text-red-400">Library</p>
         <h1 className="mt-2 text-3xl font-black text-white sm:text-5xl">
           Koleksi dan tontonanmu
         </h1>

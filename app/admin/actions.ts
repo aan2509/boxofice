@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { getAffiliateProgramSettingsSafe } from "@/lib/affiliate";
 import { sanitizeAdminRedirectPath } from "@/lib/admin-auth";
 import { clearAdminSessionCookie, requireAdminSession } from "@/lib/admin-session";
+import { getTelegramBotSettingsSafe } from "@/lib/telegram-bot-settings";
 import {
   cleanupMovieTitles,
   resolveSyncPage,
@@ -278,6 +279,90 @@ export async function updateAffiliateProgramSettings(formData: FormData) {
   });
 
   redirect(`${redirectBasePath}?${params.toString()}`);
+}
+
+function readTextField(formData: FormData, key: string) {
+  return String(formData.get(key) ?? "").trim();
+}
+
+function readRequiredUrlField(formData: FormData, key: string, label: string) {
+  const value = readTextField(formData, key);
+
+  try {
+    const url = new URL(value);
+
+    if (url.protocol !== "https:" && url.protocol !== "http:") {
+      throw new Error("invalid_protocol");
+    }
+
+    return url.toString();
+  } catch {
+    redirect(
+      `/admin/settings?bot=error&message=${encodeURIComponent(`${label} wajib berupa URL yang valid.`)}`,
+    );
+  }
+}
+
+export async function updateTelegramBotSettings(formData: FormData) {
+  await requireAdminSession();
+
+  const redirectBasePath = resolveRedirectTarget(formData, "/admin/settings");
+  const settingsResult = await getTelegramBotSettingsSafe();
+
+  if (!settingsResult.schemaReady) {
+    redirect(
+      `${redirectBasePath}?bot=error&message=${encodeURIComponent(
+        settingsResult.schemaIssue ??
+          "Database runtime belum siap untuk menyimpan pengaturan bot.",
+      )}`,
+    );
+  }
+
+  const welcomeMessage = readTextField(formData, "welcomeMessage");
+
+  if (welcomeMessage.length < 20) {
+    redirect(
+      `${redirectBasePath}?bot=error&message=${encodeURIComponent("Pesan sambutan minimal 20 karakter.")}`,
+    );
+  }
+
+  const payload = {
+    affiliateGroupLabel: readTextField(formData, "affiliateGroupLabel") || "🏠 Group Affiliate",
+    affiliateGroupUrl: readRequiredUrlField(
+      formData,
+      "affiliateGroupUrl",
+      "URL group affiliate",
+    ),
+    affiliateLabel: readTextField(formData, "affiliateLabel") || "💰 Gabung Affiliate",
+    affiliateUrl: readRequiredUrlField(
+      formData,
+      "affiliateUrl",
+      "URL tombol affiliate",
+    ),
+    channelLabel: readTextField(formData, "channelLabel") || "🎥 Film Box Office",
+    channelUrl: readRequiredUrlField(formData, "channelUrl", "URL channel film"),
+    openAppLabel: readTextField(formData, "openAppLabel") || "🎬 Buka",
+    openAppUrl: readRequiredUrlField(formData, "openAppUrl", "URL tombol buka"),
+    searchLabel: readTextField(formData, "searchLabel") || "🔎 Cari Judul",
+    searchUrl: readRequiredUrlField(formData, "searchUrl", "URL tombol cari"),
+    supportLabel: readTextField(formData, "supportLabel") || "📞 Hubungi Admin",
+    supportUrl: readRequiredUrlField(formData, "supportUrl", "URL support admin"),
+    vipLabel: readTextField(formData, "vipLabel") || "💎 Join VIP",
+    vipUrl: readRequiredUrlField(formData, "vipUrl", "URL tombol VIP"),
+    welcomeMessage,
+  };
+
+  await prisma.telegramBotSettings.update({
+    where: { id: settingsResult.settings.id },
+    data: payload,
+  });
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/settings");
+
+  redirect(
+    `${redirectBasePath}?bot=ok&message=${encodeURIComponent("Konfigurasi bot Telegram berhasil diperbarui.")}`,
+  );
 }
 
 export async function logoutAdmin() {

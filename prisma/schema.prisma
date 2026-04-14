@@ -152,6 +152,28 @@ model AffiliateProgramSettings {
   updatedAt             DateTime @updatedAt
 }
 
+model TelegramBotSettings {
+  id                  String   @id @default(uuid())
+  slug                String   @unique @default("default")
+  welcomeMessage      String   @db.Text
+  openAppLabel        String
+  openAppUrl          String   @db.Text
+  searchLabel         String
+  searchUrl           String   @db.Text
+  affiliateLabel      String
+  affiliateUrl        String   @db.Text
+  affiliateGroupLabel String
+  affiliateGroupUrl   String   @db.Text
+  channelLabel        String
+  channelUrl          String   @db.Text
+  supportLabel        String
+  supportUrl          String   @db.Text
+  vipLabel            String
+  vipUrl              String   @db.Text
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
 model AffiliateReferral {
   id               String           @id @default(uuid())
   profileId        String

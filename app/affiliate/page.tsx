@@ -3,7 +3,6 @@ import {
   ChevronRight,
   CircleDollarSign,
   MousePointerClick,
-  Sparkles,
   UserPlus,
   Wallet,
 } from "lucide-react";
@@ -115,14 +114,10 @@ export default async function AffiliatePage() {
               Box Office Partner
             </h1>
             <p className="mt-2 text-sm leading-6 text-neutral-400">
-              Bagikan bot dan Mini App Box Office, pantau hasilnya, lalu tarik
-              komisinya dari satu dashboard Telegram-first.
+              Bagikan bot App Box Office, pantau hasilnya, lalu tarik
+              komisinya.
             </p>
           </div>
-          <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-white/70">
-            <Sparkles className="mr-1 inline size-3.5" />
-            Mobile first
-          </span>
         </div>
 
         <AffiliateDashboard
@@ -162,10 +157,6 @@ export default async function AffiliatePage() {
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-base font-bold text-white">Cara kerja</p>
-              <p className="mt-1 text-sm leading-6 text-neutral-400">
-                Flow referral dibuat sederhana supaya mudah dibagikan dan
-                dipantau.
-              </p>
             </div>
             <ArrowRight className="size-5 text-neutral-500" />
           </div>

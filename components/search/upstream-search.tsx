@@ -294,15 +294,11 @@ export function UpstreamSearch({
         <div className="relative">
           <div className="inline-flex items-center gap-2 rounded-md border border-red-300/20 bg-red-500/10 px-3 py-1 text-xs font-semibold text-red-200">
             <Sparkles className="size-3.5" />
-            Cari langsung dari LK21
+            Cari Film favoritmu.
           </div>
           <h1 className="mt-4 text-3xl font-black tracking-tight text-white sm:text-5xl">
             Temukan film yang ingin kamu tonton.
           </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-neutral-300">
-            Hasil pencarian diambil langsung dari sumber terbaru, lalu video
-            dibuka tanpa menunggu data tersimpan di database.
-          </p>
 
           <form onSubmit={handleSubmit} className="mt-5">
             <div className="flex h-12 items-center gap-3 rounded-md border border-white/10 bg-black/60 px-3 ring-1 ring-transparent focus-within:border-red-400/60 focus-within:ring-red-400/30">

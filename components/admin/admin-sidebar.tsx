@@ -33,10 +33,10 @@ const items = [
     match: (pathname: string) => pathname.startsWith("/admin/sync"),
   },
   {
-    description: "Atur default komisi affiliate",
+    description: "Telegram bot, Mini App, dan komisi",
     href: "/admin/settings",
     icon: Percent,
-    label: "Setting presentase",
+    label: "Settings bot",
     match: (pathname: string) => pathname.startsWith("/admin/settings"),
   },
 ] as const;
