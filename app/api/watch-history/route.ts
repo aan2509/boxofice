@@ -36,13 +36,8 @@ export async function POST(request: NextRequest) {
   }
 
   const progressSeconds = safePositiveInteger(body?.progressSeconds);
-  const rawDuration = safePositiveInteger(body?.durationSeconds);
-  const durationSeconds = rawDuration > 0 ? rawDuration : null;
-  const completed =
-    body?.completed === true ||
-    (durationSeconds !== null && progressSeconds >= Math.max(durationSeconds - 20, 1));
 
-  if (!completed && progressSeconds < 5) {
+  if (progressSeconds < 5 && body?.completed !== true) {
     return NextResponse.json({ ok: true, skipped: "progress_too_low" });
   }
 
@@ -54,17 +49,17 @@ export async function POST(request: NextRequest) {
       },
     },
     create: {
-      completed,
-      durationSeconds,
+      completed: false,
+      durationSeconds: null,
       movieId,
-      progressSeconds,
+      progressSeconds: 0,
       userId: user.id,
     },
     update: {
-      completed,
-      ...(durationSeconds !== null ? { durationSeconds } : {}),
+      completed: false,
+      durationSeconds: null,
       lastWatchedAt: new Date(),
-      progressSeconds,
+      progressSeconds: 0,
     },
   });
 

@@ -7,7 +7,6 @@ import { WatchPlayer } from "@/components/movie/watch-player";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUserSession } from "@/lib/user-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -18,8 +17,7 @@ type WatchPageProps = {
 };
 
 async function getWatchData(id: string) {
-  const user = await getCurrentUserSession();
-  const [movie, recommendations, history] = await Promise.all([
+  const [movie, recommendations] = await Promise.all([
     prisma.movie.findUnique({
       where: { id },
       select: {
@@ -49,26 +47,13 @@ async function getWatchData(id: string) {
         quality: true,
       },
     }),
-    user
-      ? prisma.watchHistory.findUnique({
-          where: {
-            userId_movieId: {
-              movieId: id,
-              userId: user.id,
-            },
-          },
-          select: {
-            progressSeconds: true,
-          },
-        })
-      : null,
   ]);
 
   if (!movie) {
     return null;
   }
 
-  return { history, movie, recommendations };
+  return { movie, recommendations };
 }
 
 export default async function WatchPage({ params }: WatchPageProps) {
@@ -79,7 +64,7 @@ export default async function WatchPage({ params }: WatchPageProps) {
     notFound();
   }
 
-  const { history, movie, recommendations } = data;
+  const { movie, recommendations } = data;
 
   return (
     <main className="min-h-screen bg-black text-white">
@@ -116,7 +101,6 @@ export default async function WatchPage({ params }: WatchPageProps) {
           <div className="grid gap-5 sm:gap-7 lg:grid-cols-[minmax(0,1fr)_320px]">
             <div className="space-y-4 sm:space-y-5">
               <WatchPlayer
-                initialProgressSeconds={history?.progressSeconds ?? 0}
                 movieId={movie.id}
                 poster={movie.thumbnail}
               />
@@ -138,7 +122,7 @@ export default async function WatchPage({ params }: WatchPageProps) {
                 </h1>
                 <p className="max-w-3xl text-sm leading-6 text-neutral-300">
                   {movie.description ??
-                    "Pilih kualitas yang nyaman, tekan play, lalu lanjutkan tontonanmu."}
+                    "Pilih kualitas yang nyaman, tekan play, lalu nikmati tontonanmu."}
                 </p>
               </div>
             </div>

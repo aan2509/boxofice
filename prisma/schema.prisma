@@ -57,16 +57,18 @@ model MovieStreamCache {
 }
 
 model User {
-  id           String        @id @default(uuid())
-  name         String
-  email        String        @unique
-  passwordHash String
-  passwordSalt String
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  sessions     UserSession[]
-  favorites    UserFavorite[]
-  watchHistory WatchHistory[]
+  id                String             @id @default(uuid())
+  name              String
+  email             String             @unique
+  passwordHash      String
+  passwordSalt      String
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  sessions          UserSession[]
+  favorites         UserFavorite[]
+  watchHistory      WatchHistory[]
+  affiliateProfile  AffiliateProfile?
+  affiliateReferral AffiliateReferral?
 }
 
 model UserSession {
@@ -110,4 +112,70 @@ model WatchHistory {
   @@unique([userId, movieId])
   @@index([userId, lastWatchedAt])
   @@index([movieId])
+}
+
+model AffiliateProfile {
+  id               String                   @id @default(uuid())
+  userId           String                   @unique
+  referralCode     String                   @unique
+  totalClicks      Int                      @default(0)
+  totalSignups     Int                      @default(0)
+  activeReferrals  Int                      @default(0)
+  totalCommission  Int                      @default(0)
+  availableBalance Int                      @default(0)
+  pendingBalance   Int                      @default(0)
+  withdrawnBalance Int                      @default(0)
+  minimumWithdraw  Int                      @default(50000)
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+  user             User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  referrals        AffiliateReferral[]
+  payoutRequests   AffiliatePayoutRequest[]
+  activities       AffiliateActivity[]
+
+  @@index([createdAt])
+}
+
+model AffiliateReferral {
+  id               String           @id @default(uuid())
+  profileId        String
+  referredUserId   String           @unique
+  status           String           @default("registered")
+  commissionEarned Int              @default(0)
+  activatedAt      DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  profile          AffiliateProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  referredUser     User             @relation(fields: [referredUserId], references: [id], onDelete: Cascade)
+
+  @@index([profileId, createdAt])
+  @@index([status])
+}
+
+model AffiliatePayoutRequest {
+  id        String           @id @default(uuid())
+  profileId  String
+  amount     Int
+  status     String          @default("pending")
+  note       String?         @db.Text
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  profile    AffiliateProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId, createdAt])
+  @@index([status])
+}
+
+model AffiliateActivity {
+  id          String           @id @default(uuid())
+  profileId    String
+  type         String
+  title        String
+  description  String?         @db.Text
+  amount       Int?
+  createdAt    DateTime        @default(now())
+  profile      AffiliateProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId, createdAt])
+  @@index([type])
 }

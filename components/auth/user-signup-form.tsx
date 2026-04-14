@@ -12,7 +12,11 @@ import { Button } from "@/components/ui/button";
 
 const initialState: UserAuthFormState = {};
 
-export function UserSignupForm() {
+export function UserSignupForm({
+  referralCode,
+}: {
+  referralCode?: string;
+}) {
   const [state, formAction, isPending] = React.useActionState(
     signupUserAction,
     initialState,
@@ -20,6 +24,14 @@ export function UserSignupForm() {
 
   return (
     <form action={formAction} className="space-y-4">
+      {referralCode ? (
+        <div className="rounded-md border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100">
+          Link undangan aktif. Setelah akun dibuat, referral akan otomatis
+          tercatat.
+        </div>
+      ) : null}
+      <input type="hidden" name="referralCode" value={referralCode ?? ""} />
+
       <label className="block">
         <span className="mb-2 block text-sm font-medium text-neutral-300">
           Nama

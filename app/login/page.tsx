@@ -20,7 +20,7 @@ export default async function LoginPage() {
       badge="Akun pengguna"
       backdropMovies={backdropMovies}
       title="Masuk"
-      description="Lanjutkan tontonan favoritmu dari akun yang sama."
+      description="Masuk untuk menyimpan koleksi dan riwayat tontonanmu."
     >
       <UserLoginForm />
     </AuthShell>

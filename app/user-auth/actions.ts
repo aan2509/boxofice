@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 
+import { attachAffiliateReferral } from "@/lib/affiliate";
 import {
   changeUserPassword,
   createUserSession,
@@ -47,6 +48,7 @@ export async function signupUserAction(
   const email = String(formData.get("email") ?? "");
   const password = String(formData.get("password") ?? "");
   const confirmPassword = String(formData.get("confirmPassword") ?? "");
+  const referralCode = String(formData.get("referralCode") ?? "");
 
   if (name.trim().length < 2) {
     return { error: "Nama minimal 2 karakter." };
@@ -66,6 +68,10 @@ export async function signupUserAction(
 
   try {
     const user = await registerUser({ email, name, password });
+    await attachAffiliateReferral({
+      referralCode,
+      referredUserId: user.id,
+    }).catch(() => undefined);
     await createUserSession(user);
   } catch (error) {
     return {

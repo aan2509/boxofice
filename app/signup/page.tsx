@@ -5,10 +5,17 @@ import { UserSignupForm } from "@/components/auth/user-signup-form";
 import { getCinematicBackdropMovies } from "@/lib/movie-feeds";
 import { getCurrentUserSession } from "@/lib/user-auth";
 
-export default async function SignupPage() {
-  const [user, backdropMovies] = await Promise.all([
+type SignupPageProps = {
+  searchParams: Promise<{
+    ref?: string;
+  }>;
+};
+
+export default async function SignupPage({ searchParams }: SignupPageProps) {
+  const [user, backdropMovies, params] = await Promise.all([
     getCurrentUserSession(),
     getCinematicBackdropMovies(),
+    searchParams,
   ]);
 
   if (user) {
@@ -22,7 +29,7 @@ export default async function SignupPage() {
       title="Daftar"
       description="Buat akun agar tontonanmu terasa lebih personal."
     >
-      <UserSignupForm />
+      <UserSignupForm referralCode={params.ref} />
     </AuthShell>
   );
 }

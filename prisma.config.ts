@@ -5,6 +5,22 @@ config({ path: ".env.local" });
 config();
 
 function prismaCliDatabaseUrl() {
+  const directUrl = process.env.DIRECT_URL?.trim();
+
+  if (directUrl) {
+    const parsedDirectUrl = new URL(directUrl);
+
+    if (
+      parsedDirectUrl.hostname.includes("supabase.com") &&
+      !parsedDirectUrl.searchParams.has("sslmode")
+    ) {
+      parsedDirectUrl.searchParams.set("sslmode", "require");
+      parsedDirectUrl.searchParams.set("sslaccept", "accept_invalid_certs");
+    }
+
+    return parsedDirectUrl.toString();
+  }
+
   const url = env("DATABASE_URL");
 
   if (!url.includes("pooler.supabase.com:6543")) {

@@ -23,27 +23,13 @@ type LibraryMovie = {
   title: string;
 };
 
-function formatWatchTime(seconds: number) {
-  const safeSeconds = Math.max(0, Math.trunc(seconds));
-  const hours = Math.floor(safeSeconds / 3600);
-  const minutes = Math.floor((safeSeconds % 3600) / 60);
-  const remainingSeconds = safeSeconds % 60;
-
-  if (hours > 0) {
-    return `${hours}:${String(minutes).padStart(2, "0")}:${String(
-      remainingSeconds,
-    ).padStart(2, "0")}`;
-  }
-
-  return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
-}
-
-function progressPercent(progressSeconds: number, durationSeconds: number | null) {
-  if (!durationSeconds || durationSeconds <= 0) {
-    return 0;
-  }
-
-  return Math.min(100, Math.max(0, (progressSeconds / durationSeconds) * 100));
+function formatWatchedDate(value: Date) {
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    month: "short",
+  }).format(value);
 }
 
 function LibraryTabs({
@@ -176,16 +162,14 @@ function HistoryList({
   histories,
 }: {
   histories: Array<{
-    durationSeconds: number | null;
     lastWatchedAt: Date;
     movie: LibraryMovie;
-    progressSeconds: number;
   }>;
 }) {
   if (!histories.length) {
     return (
       <EmptyState
-        description="Mulai tonton film, lalu progres terakhirnya akan otomatis tersimpan di sini."
+        description="Film yang pernah kamu tonton akan muncul di sini."
         title="Belum ada riwayat tontonan"
       />
     );
@@ -193,45 +177,29 @@ function HistoryList({
 
   return (
     <div className="space-y-3">
-      {histories.map((history) => {
-        const progress = progressPercent(
-          history.progressSeconds,
-          history.durationSeconds,
-        );
-
-        return (
-          <Link
-            key={history.movie.id}
-            href={`/movie/${history.movie.id}?play=resume`}
-            prefetch
-            className="grid grid-cols-[92px_minmax(0,1fr)] gap-3 rounded-md border border-white/10 bg-white/[0.04] p-2 transition-colors hover:bg-white/[0.08] sm:grid-cols-[120px_minmax(0,1fr)]"
-          >
-            <MoviePoster movie={history.movie} />
-            <div className="flex min-w-0 flex-col justify-center py-1">
-              <p className="line-clamp-2 text-base font-bold text-white sm:text-lg">
-                {history.movie.title}
-              </p>
-              <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-neutral-400">
-                <Clock3 className="size-3.5" />
-                Terakhir di {formatWatchTime(history.progressSeconds)}
-                {history.durationSeconds
-                  ? ` dari ${formatWatchTime(history.durationSeconds)}`
-                  : ""}
-              </p>
-              <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10">
-                <div
-                  className="h-full rounded-full bg-red-600"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-              <span className="mt-3 inline-flex w-fit items-center gap-1.5 rounded-md bg-white px-3 py-1.5 text-xs font-semibold text-neutral-950">
-                <Play className="size-3.5 fill-current" />
-                Lanjutkan
-              </span>
-            </div>
-          </Link>
-        );
-      })}
+      {histories.map((history) => (
+        <Link
+          key={history.movie.id}
+          href={`/movie/${history.movie.id}`}
+          prefetch
+          className="grid grid-cols-[92px_minmax(0,1fr)] gap-3 rounded-md border border-white/10 bg-white/[0.04] p-2 transition-colors hover:bg-white/[0.08] sm:grid-cols-[120px_minmax(0,1fr)]"
+        >
+          <MoviePoster movie={history.movie} />
+          <div className="flex min-w-0 flex-col justify-center py-1">
+            <p className="line-clamp-2 text-base font-bold text-white sm:text-lg">
+              {history.movie.title}
+            </p>
+            <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-neutral-400">
+              <Clock3 className="size-3.5" />
+              Terakhir ditonton {formatWatchedDate(history.lastWatchedAt)}
+            </p>
+            <span className="mt-4 inline-flex w-fit items-center gap-1.5 rounded-md bg-white px-3 py-1.5 text-xs font-semibold text-neutral-950">
+              <Play className="size-3.5 fill-current" />
+              Tonton lagi
+            </span>
+          </div>
+        </Link>
+      ))}
     </div>
   );
 }
@@ -287,7 +255,6 @@ export default async function LibraryPage({ searchParams }: LibraryPageProps) {
       where: { userId: user.id },
       orderBy: { lastWatchedAt: "desc" },
       select: {
-        durationSeconds: true,
         lastWatchedAt: true,
         movie: {
           select: {
@@ -298,7 +265,6 @@ export default async function LibraryPage({ searchParams }: LibraryPageProps) {
             title: true,
           },
         },
-        progressSeconds: true,
       },
       take: 50,
     }),
@@ -312,7 +278,7 @@ export default async function LibraryPage({ searchParams }: LibraryPageProps) {
           Koleksi dan tontonanmu
         </h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-neutral-400">
-          Simpan film favoritmu dan lanjutkan tontonan dari posisi terakhir.
+          Simpan film favoritmu dan temukan lagi judul yang pernah kamu tonton.
         </p>
 
         <div className="mt-6">
