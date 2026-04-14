@@ -331,15 +331,18 @@ function normalizeStreamSources(data: JsonRecord): StreamSource[] {
   }
 
   const normalizedSources = Array.from(unique.values());
-  const hasResolutionSources = normalizedSources.some((source) =>
-    /[0-9]{3,4}p/i.test(source.label),
-  );
 
-  if (!hasResolutionSources) {
-    return normalizedSources;
-  }
+  return normalizedSources.sort((left, right) => {
+    if (left.label === "Auto" && right.label !== "Auto") {
+      return -1;
+    }
 
-  return normalizedSources.filter((source) => source.label !== "Auto");
+    if (left.label !== "Auto" && right.label === "Auto") {
+      return 1;
+    }
+
+    return 0;
+  });
 }
 
 function normalizeStreamResponse(
@@ -428,9 +431,7 @@ async function isPlayableMediaUrl(url: string, depth = 0): Promise<boolean> {
   }
 
   const isPlaylist = sourceTypeFromUrl(url) === "application/x-mpegURL";
-  const response = await fetchForMediaProbe(url, {
-    headers: isPlaylist ? undefined : { Range: "bytes=0-1023" },
-  });
+  const response = await fetchForMediaProbe(url);
   const contentType = response.headers.get("content-type") ?? "";
 
   if (!response.ok || isLikelyBadMediaContentType(contentType)) {
@@ -451,6 +452,14 @@ async function isPlayableMediaUrl(url: string, depth = 0): Promise<boolean> {
     }
 
     return isPlayableMediaUrl(firstMediaUrl, depth + 1);
+  }
+
+  if (
+    contentType.toLowerCase().startsWith("video/") ||
+    contentType.toLowerCase().includes("octet-stream")
+  ) {
+    await response.body?.cancel().catch(() => undefined);
+    return true;
   }
 
   const bytes = new Uint8Array(await response.arrayBuffer());
@@ -551,9 +560,16 @@ export async function fetchPlayableStream(
   sourceUrl: string,
   options: { revalidate?: number } = {},
 ): Promise<SanitizedStreamResponse> {
-  const initialStream = await fetchStream(sourceUrl, options);
+  let initialStream: SanitizedStreamResponse | null = null;
+  let initialError: unknown;
 
-  if (initialStream.sources.length > 0) {
+  try {
+    initialStream = await fetchStream(sourceUrl, options);
+  } catch (error) {
+    initialError = error;
+  }
+
+  if (initialStream && initialStream.sources.length > 0) {
     const playableSources = await filterPlayableSources(initialStream.sources);
 
     if (playableSources.length > 0) {
@@ -568,19 +584,30 @@ export async function fetchPlayableStream(
   const detail = await fetchDetail(sourceUrl);
 
   if (!detail.streams || detail.streams === sourceUrl) {
-    return {
-      ...initialStream,
-      resolvedFrom: sourceUrl,
-    };
+    if (initialStream) {
+      return {
+        ...initialStream,
+        resolvedFrom: sourceUrl,
+      };
+    }
+
+    throw initialError instanceof Error
+      ? initialError
+      : new MovieApiError("LK21 stream source is unavailable");
   }
 
   const playerStream = await fetchStream(detail.streams, options);
 
   if (playerStream.sources.length === 0) {
-    return {
-      ...initialStream,
-      resolvedFrom: sourceUrl,
-    };
+    return initialStream
+      ? {
+          ...initialStream,
+          resolvedFrom: sourceUrl,
+        }
+      : {
+          ...playerStream,
+          resolvedFrom: detail.streams,
+        };
   }
 
   const playableSources = await filterPlayableSources(playerStream.sources);

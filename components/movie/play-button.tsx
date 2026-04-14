@@ -26,8 +26,7 @@ export function PlayButton({ movieId }: PlayButtonProps) {
         cacheKey: getMovieStreamCacheKey(movieId),
         movieId,
       }).catch(() => undefined);
-      void import("video.js").catch(() => undefined);
-      void import("videojs-hls-quality-selector").catch(() => undefined);
+      void import("hls.js").catch(() => undefined);
     };
 
     const idleScheduler = window.requestIdleCallback;

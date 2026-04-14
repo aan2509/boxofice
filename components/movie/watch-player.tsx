@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { RotateCcw, RotateCw } from "lucide-react";
-import type Player from "video.js/dist/types/player";
+import type Hls from "hls.js";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -14,10 +14,6 @@ import {
   type CachedStreamSource,
 } from "@/lib/stream-cache-client";
 import { cn } from "@/lib/utils";
-
-type PlayerWithQualitySelector = Player & {
-  hlsQualitySelector?: (options?: { displayCurrentQuality?: boolean }) => void;
-};
 
 type WatchPlayerProps = {
   movieId?: string;
@@ -51,14 +47,8 @@ function isHlsSource(source: CachedStreamSource) {
   );
 }
 
-function toVideoJsSource(source: CachedStreamSource) {
-  const type =
-    source.type ?? (isHlsSource(source) ? "application/x-mpegURL" : "video/mp4");
-
-  return {
-    src: `/api/hls?url=${encodeURIComponent(source.url)}`,
-    type,
-  };
+function toMediaSourceUrl(source: CachedStreamSource) {
+  return `/api/hls?url=${encodeURIComponent(source.url)}`;
 }
 
 async function lockLandscapeIfPossible() {
@@ -84,8 +74,12 @@ export function WatchPlayer({ movieId, poster, sourceUrl }: WatchPlayerProps) {
     return movieId ? getMovieStreamCacheKey(movieId) : null;
   }, [movieId, sourceUrl]);
   const videoRef = React.useRef<HTMLVideoElement | null>(null);
-  const playerRef = React.useRef<PlayerWithQualitySelector | null>(null);
+  const hlsRef = React.useRef<Hls | null>(null);
   const lastTapRef = React.useRef<{ time: number; x: number } | null>(null);
+  const resumeSnapshotRef = React.useRef<{
+    time: number;
+    shouldPlay: boolean;
+  } | null>(null);
   const [stream, setStream] = React.useState<CachedStreamResponse | null>(() =>
     streamCacheKey ? readCachedStream(streamCacheKey) : null,
   );
@@ -162,9 +156,7 @@ export function WatchPlayer({ movieId, poster, sourceUrl }: WatchPlayerProps) {
 
   const moveToNextPlayableSource = React.useCallback(
     (failedUrl: string) => {
-      const nextFailedUrls = Array.from(
-        new Set([...failedSourceUrls, failedUrl]),
-      );
+      const nextFailedUrls = Array.from(new Set([...failedSourceUrls, failedUrl]));
       const nextSource = sources.find(
         (source) => !nextFailedUrls.includes(source.url),
       );
@@ -188,58 +180,116 @@ export function WatchPlayer({ movieId, poster, sourceUrl }: WatchPlayerProps) {
       return;
     }
 
+    const video = videoRef.current;
     let disposed = false;
+    let hls: Hls | null = null;
+    const resumeSnapshot = resumeSnapshotRef.current;
+    resumeSnapshotRef.current = null;
+    const mediaUrl = toMediaSourceUrl(selectedSource);
 
-    async function setupPlayer() {
-      const [{ default: videojs }] = await Promise.all([
-        import("video.js"),
-        import("videojs-hls-quality-selector"),
-      ]);
-
-      if (disposed || !videoRef.current) {
+    function resumePlayback() {
+      if (!resumeSnapshot || disposed) {
         return;
       }
 
-      const player = videojs(videoRef.current, {
-        autoplay: false,
-        controls: true,
-        fluid: true,
-        responsive: true,
-        preload: "metadata",
-        poster: poster ?? undefined,
-        sources: [toVideoJsSource(selectedSource)],
-      }) as PlayerWithQualitySelector;
+      if (resumeSnapshot.time > 1) {
+        video.currentTime = resumeSnapshot.time;
+      }
 
-      playerRef.current = player;
-      player.ready(() => {
-        player.hlsQualitySelector?.({ displayCurrentQuality: true });
-      });
-
-      const handlePlayerError = () => {
-        moveToNextPlayableSource(selectedSource.url);
-      };
-      const handleFullscreenChange = () => {
-        if (player.isFullscreen()) {
-          void lockLandscapeIfPossible();
-          return;
-        }
-
-        unlockOrientationIfPossible();
-      };
-
-      player.on("error", handlePlayerError);
-      player.on("fullscreenchange", handleFullscreenChange);
+      if (resumeSnapshot.shouldPlay) {
+        void video.play().catch(() => undefined);
+      }
     }
 
-    setupPlayer();
+    function handleNativeError() {
+      if (!disposed) {
+        moveToNextPlayableSource(selectedSource.url);
+      }
+    }
+
+    async function setupPlayer() {
+      video.controls = true;
+      video.playsInline = true;
+      video.preload = "metadata";
+      video.poster = poster ?? "";
+      video.addEventListener("error", handleNativeError);
+
+      if (!isHlsSource(selectedSource)) {
+        video.src = mediaUrl;
+        video.addEventListener("loadedmetadata", resumePlayback, { once: true });
+        video.load();
+        return;
+      }
+
+      const { default: Hls } = await import("hls.js");
+
+      if (disposed) {
+        return;
+      }
+
+      if (Hls.isSupported()) {
+        hls = new Hls({
+          backBufferLength: 60,
+          enableWorker: true,
+          maxBufferLength: 45,
+        });
+        hlsRef.current = hls;
+        hls.attachMedia(video);
+        hls.loadSource(mediaUrl);
+        hls.on(Hls.Events.MANIFEST_PARSED, resumePlayback);
+        hls.on(Hls.Events.ERROR, (_event, data) => {
+          if (data.fatal) {
+            hls?.destroy();
+            hlsRef.current = null;
+            moveToNextPlayableSource(selectedSource.url);
+          }
+        });
+        return;
+      }
+
+      if (
+        video.canPlayType("application/vnd.apple.mpegurl") ||
+        video.canPlayType("application/x-mpegURL")
+      ) {
+        video.src = mediaUrl;
+        video.addEventListener("loadedmetadata", resumePlayback, { once: true });
+        video.load();
+        return;
+      }
+
+      moveToNextPlayableSource(selectedSource.url);
+    }
+
+    void setupPlayer();
 
     return () => {
       disposed = true;
-      playerRef.current?.dispose();
+      video.removeEventListener("error", handleNativeError);
+      hls?.destroy();
+      hlsRef.current = null;
+      video.removeAttribute("src");
+      video.load();
       unlockOrientationIfPossible();
-      playerRef.current = null;
     };
   }, [moveToNextPlayableSource, poster, selectedSource, sources]);
+
+  React.useEffect(() => {
+    function handleFullscreenChange() {
+      if (document.fullscreenElement === videoRef.current) {
+        void lockLandscapeIfPossible();
+        return;
+      }
+
+      unlockOrientationIfPossible();
+    }
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      unlockOrientationIfPossible();
+    };
+  }, []);
 
   React.useEffect(() => {
     if (!seekFeedback) {
@@ -254,14 +304,14 @@ export function WatchPlayer({ movieId, poster, sourceUrl }: WatchPlayerProps) {
   }, [seekFeedback]);
 
   function seekBy(seconds: number) {
-    const player = playerRef.current;
+    const video = videoRef.current;
 
-    if (!player) {
+    if (!video) {
       return;
     }
 
-    const currentTime = player.currentTime() ?? 0;
-    const duration = player.duration();
+    const currentTime = video.currentTime;
+    const duration = video.duration;
     const maxTime =
       typeof duration === "number" && Number.isFinite(duration)
         ? Math.max(duration - 1, 0)
@@ -271,7 +321,7 @@ export function WatchPlayer({ movieId, poster, sourceUrl }: WatchPlayerProps) {
       Math.min(currentTime + seconds, maxTime),
     );
 
-    player.currentTime(nextTime);
+    video.currentTime = nextTime;
     setSeekFeedback({
       direction: seconds < 0 ? "backward" : "forward",
       key: Date.now(),
@@ -286,7 +336,7 @@ export function WatchPlayer({ movieId, poster, sourceUrl }: WatchPlayerProps) {
   function handleDoubleClick(event: React.MouseEvent<HTMLDivElement>) {
     const target = event.target as HTMLElement;
 
-    if (target.closest(".vjs-control-bar, button")) {
+    if (target.closest("button")) {
       return;
     }
 
@@ -297,7 +347,7 @@ export function WatchPlayer({ movieId, poster, sourceUrl }: WatchPlayerProps) {
   function handleTouchEnd(event: React.TouchEvent<HTMLDivElement>) {
     const target = event.target as HTMLElement;
 
-    if (target.closest(".vjs-control-bar, button")) {
+    if (target.closest("button")) {
       return;
     }
 
@@ -322,23 +372,12 @@ export function WatchPlayer({ movieId, poster, sourceUrl }: WatchPlayerProps) {
   }
 
   function selectSource(source: CachedStreamSource) {
-    if (!playerRef.current) {
-      setSelectedSourceUrl(source.url);
-      return;
-    }
-
-    const player = playerRef.current;
-    const currentTime = player.currentTime() ?? 0;
-    const wasPaused = player.paused();
-
+    const video = videoRef.current;
+    resumeSnapshotRef.current = {
+      time: video?.currentTime ?? 0,
+      shouldPlay: video ? !video.paused : false,
+    };
     setSelectedSourceUrl(source.url);
-    player.src(toVideoJsSource(source));
-    player.one("loadedmetadata", () => {
-      player.currentTime(currentTime);
-      if (!wasPaused) {
-        void player.play();
-      }
-    });
   }
 
   if (!stream && !error) {
@@ -407,14 +446,14 @@ export function WatchPlayer({ movieId, poster, sourceUrl }: WatchPlayerProps) {
   return (
     <div className="space-y-3">
       <div
-        data-vjs-player
         onDoubleClick={handleDoubleClick}
         onTouchEnd={handleTouchEnd}
-        className="relative overflow-hidden bg-black ring-1 ring-white/10 sm:rounded-md"
+        className="relative aspect-video overflow-hidden bg-black ring-1 ring-white/10 sm:rounded-md"
       >
         <video
           ref={videoRef}
-          className="video-js vjs-big-play-centered"
+          className="h-full w-full bg-black"
+          poster={poster ?? undefined}
           playsInline
           controls
         />

@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import "video.js/dist/video-js.css";
-import "videojs-hls-quality-selector/dist/videojs-hls-quality-selector.css";
 
 import { MobileBottomNav } from "@/components/navigation/mobile-bottom-nav";
 import "./globals.css";
