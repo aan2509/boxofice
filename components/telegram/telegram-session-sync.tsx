@@ -146,7 +146,7 @@ export function TelegramSessionSync() {
         const targetPath = getTelegramStartTargetPath();
 
         if (targetPath && window.location.pathname === "/") {
-          router.replace(targetPath);
+          window.location.replace(targetPath);
           return;
         }
 

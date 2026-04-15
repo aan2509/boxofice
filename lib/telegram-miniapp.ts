@@ -82,10 +82,12 @@ export function buildTelegramMiniAppUrlForConfig(
   input: Pick<TelegramRuntimeConfig, "botUsername" | "miniAppShortName">,
   startParam?: string | null,
 ) {
+  if (!input.miniAppShortName) {
+    return buildTelegramBotChatUrlForUsername(input.botUsername, startParam);
+  }
+
   const username = input.botUsername.trim().replace(/^@/, "");
-  const url = input.miniAppShortName
-    ? new URL(`https://t.me/${username}/${input.miniAppShortName}`)
-    : new URL(`https://t.me/${username}`);
+  const url = new URL(`https://t.me/${username}/${input.miniAppShortName}`);
 
   if (startParam) {
     url.searchParams.set("startapp", startParam);

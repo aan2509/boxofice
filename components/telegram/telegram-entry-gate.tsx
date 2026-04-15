@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { MessageCircle, ShieldCheck, Smartphone } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -71,7 +70,6 @@ export function TelegramEntryGate({
   miniAppUrl,
   successRedirectPath = "/",
 }: TelegramEntryGateProps) {
-  const router = useRouter();
   const [error, setError] = React.useState<string | null>(null);
   const [status, setStatus] = React.useState(
     "Menyambungkan akun Telegram kamu...",
@@ -124,8 +122,9 @@ export function TelegramEntryGate({
       }
 
       setStatus("Akun siap. Membuka Box Office...");
-      router.replace(getTelegramStartTargetPath() ?? successRedirectPath);
-      router.refresh();
+      window.location.replace(
+        getTelegramStartTargetPath() ?? successRedirectPath,
+      );
     } catch (authError) {
       setError(
         authError instanceof Error
@@ -135,7 +134,7 @@ export function TelegramEntryGate({
       setStatus("Koneksi Telegram butuh dicoba lagi.");
       setIsLoading(false);
     }
-  }, [botChatUrl, router, successRedirectPath]);
+  }, [botChatUrl, successRedirectPath]);
 
   React.useEffect(() => {
     const webApp = getTelegramWebApp();

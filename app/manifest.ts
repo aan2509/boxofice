@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Layar BoxOffice",
     short_name: "Layar BoxOffice",
     description:
-      "Mini App Telegram untuk nonton film Box Office, buka VIP, dan jalankan affiliate langsung dari Telegram.",
+      "Mini App Telegram untuk nonton film Box Office langsung dari Telegram.",
     start_url: "/",
     display: "standalone",
     background_color: "#050505",

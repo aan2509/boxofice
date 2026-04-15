@@ -8,6 +8,7 @@ import { DetailWatchActions } from "@/components/movie/detail-watch-actions";
 import { MovieCardLink } from "@/components/movie/movie-card-link";
 import { SynopsisAccordion } from "@/components/movie/synopsis-accordion";
 import { Badge } from "@/components/ui/badge";
+import { TelegramEntryGate } from "@/components/telegram/telegram-entry-gate";
 import { ensureAffiliateProfileWithCode } from "@/lib/affiliate";
 import {
   getMovieDetailData,
@@ -17,9 +18,14 @@ import {
 import { prisma } from "@/lib/prisma";
 import { getEnvPublicAppUrl } from "@/lib/telegram-bot-settings";
 import { getPreferredTelegramShareLinksForUser } from "@/lib/telegram-partner-bots";
-import { buildTelegramAppStartParam } from "@/lib/telegram-miniapp";
-import { requireUserSession } from "@/lib/user-auth";
+import {
+  buildTelegramAppStartParam,
+  buildTelegramBotChatUrlForUsername,
+  buildTelegramMiniAppUrlForConfig,
+} from "@/lib/telegram-miniapp";
+import { getCurrentUserSession } from "@/lib/user-auth";
 import { getVipProgramSettingsSafe, getVipStatus } from "@/lib/vip";
+import { getTelegramBotSettingsSafe } from "@/lib/telegram-bot-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -177,13 +183,30 @@ export default async function MoviePage({ params, searchParams }: MoviePageProps
   const [{ id }, query, user, vipSettingsResult] = await Promise.all([
     params,
     searchParams,
-    requireUserSession(),
+    getCurrentUserSession(),
     getVipProgramSettingsSafe(),
   ]);
   const movie = await getMovieDetailData(id);
 
   if (!movie) {
     notFound();
+  }
+
+  if (!user) {
+    const telegram = await getTelegramBotSettingsSafe();
+    const startParam = buildTelegramAppStartParam({ movieId: movie.id });
+
+    return (
+      <TelegramEntryGate
+        adminLoginUrl="/admin/login"
+        botChatUrl={buildTelegramBotChatUrlForUsername(
+          telegram.runtime.botUsername,
+          startParam,
+        )}
+        miniAppUrl={buildTelegramMiniAppUrlForConfig(telegram.runtime, startParam)}
+        successRedirectPath={`/movie/${movie.id}`}
+      />
+    );
   }
 
   const [favorite, relatedMovies] = await Promise.all([
