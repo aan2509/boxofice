@@ -8,6 +8,7 @@ import {
 import {
   buildAffiliateStartParam,
   buildTelegramBotChatUrlForUsername,
+  buildTelegramMainMiniAppUrlForUsername,
   buildTelegramMiniAppUrlForConfig,
   validateTelegramInitData,
 } from "@/lib/telegram-miniapp";
@@ -111,6 +112,10 @@ export function buildPartnerBotLinks(input: {
   const startParam = buildAffiliateStartParam(input.referralCode);
 
   return {
+    mainMiniAppUrl: buildTelegramMainMiniAppUrlForUsername(
+      input.botUsername,
+      startParam,
+    ),
     miniAppUrl: buildTelegramMiniAppUrlForConfig(
       {
         botUsername: input.botUsername,
@@ -216,7 +221,7 @@ export async function getPreferredPartnerBotShareLink(input: {
       botUsername: partnerBot.botUsername,
       miniAppShortName: partnerBot.miniAppShortName,
       referralCode: input.referralCode,
-    }).miniAppUrl;
+    }).mainMiniAppUrl;
   } catch (error) {
     if (isMissingPartnerBotSchemaError(error)) {
       return null;
@@ -233,6 +238,10 @@ export async function getPreferredTelegramShareLinksForUser(input: {
   const telegram = await getTelegramBotSettingsSafe();
   const fallback = {
     chatUrl: buildTelegramBotChatUrlForUsername(
+      telegram.runtime.botUsername,
+      input.startParam,
+    ),
+    mainMiniAppUrl: buildTelegramMainMiniAppUrlForUsername(
       telegram.runtime.botUsername,
       input.startParam,
     ),
@@ -267,6 +276,10 @@ export async function getPreferredTelegramShareLinksForUser(input: {
 
     return {
       chatUrl: buildTelegramBotChatUrlForUsername(
+        partnerBot.botUsername,
+        input.startParam,
+      ),
+      mainMiniAppUrl: buildTelegramMainMiniAppUrlForUsername(
         partnerBot.botUsername,
         input.startParam,
       ),

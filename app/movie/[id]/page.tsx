@@ -23,7 +23,7 @@ import { getPreferredTelegramShareLinksForUser } from "@/lib/telegram-partner-bo
 import {
   buildTelegramAppStartParam,
   buildTelegramBotChatUrlForUsername,
-  buildTelegramMiniAppUrlForConfig,
+  buildTelegramMainMiniAppUrlForUsername,
   extractAffiliateCodeFromStartParam,
 } from "@/lib/telegram-miniapp";
 import { getCurrentUserSession } from "@/lib/user-auth";
@@ -265,7 +265,10 @@ export default async function MoviePage({ params, searchParams }: MoviePageProps
         }).catch(() => null)
       : null;
   const telegramShareUrl =
-    telegramShareLinks?.miniAppUrl || telegramShareLinks?.chatUrl || null;
+    telegramShareLinks?.mainMiniAppUrl ||
+    telegramShareLinks?.miniAppUrl ||
+    telegramShareLinks?.chatUrl ||
+    null;
   const authStartParam = buildTelegramAppStartParam({
     movieId: movie.id,
     referralCode: incomingReferralCode,
@@ -274,7 +277,10 @@ export default async function MoviePage({ params, searchParams }: MoviePageProps
     ? buildTelegramBotChatUrlForUsername(telegram.runtime.botUsername, authStartParam)
     : null;
   const authMiniAppUrl = telegram
-    ? buildTelegramMiniAppUrlForConfig(telegram.runtime, authStartParam)
+    ? buildTelegramMainMiniAppUrlForUsername(
+        telegram.runtime.botUsername,
+        authStartParam,
+      )
     : null;
 
   return (

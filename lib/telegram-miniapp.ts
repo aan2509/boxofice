@@ -78,12 +78,28 @@ export function buildTelegramBotChatUrlForUsername(
   return url.toString();
 }
 
+export function buildTelegramMainMiniAppUrlForUsername(
+  botUsername: string,
+  startParam?: string | null,
+) {
+  const normalizedUsername = botUsername.trim().replace(/^@/, "");
+  const url = new URL(`https://t.me/${normalizedUsername}`);
+
+  if (startParam) {
+    url.searchParams.set("startapp", startParam);
+  } else {
+    url.searchParams.set("startapp", "");
+  }
+
+  return url.toString();
+}
+
 export function buildTelegramMiniAppUrlForConfig(
   input: Pick<TelegramRuntimeConfig, "botUsername" | "miniAppShortName">,
   startParam?: string | null,
 ) {
   if (!input.miniAppShortName) {
-    return buildTelegramBotChatUrlForUsername(input.botUsername, startParam);
+    return buildTelegramMainMiniAppUrlForUsername(input.botUsername, startParam);
   }
 
   const username = input.botUsername.trim().replace(/^@/, "");
@@ -108,6 +124,13 @@ export function buildTelegramMiniAppUrl(startParam?: string | null) {
 
 export function buildTelegramBotChatUrl(startParam?: string | null) {
   return buildTelegramBotChatUrlForUsername(getTelegramBotUsername(), startParam);
+}
+
+export function buildTelegramMainMiniAppUrl(startParam?: string | null) {
+  return buildTelegramMainMiniAppUrlForUsername(
+    getTelegramBotUsername(),
+    startParam,
+  );
 }
 
 export function buildAffiliateStartParam(referralCode: string) {

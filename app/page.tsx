@@ -12,7 +12,7 @@ import {
 import { getTelegramBotSettingsSafe } from "@/lib/telegram-bot-settings";
 import {
   buildTelegramBotChatUrlForUsername,
-  buildTelegramMiniAppUrlForConfig,
+  buildTelegramMainMiniAppUrlForUsername,
 } from "@/lib/telegram-miniapp";
 import { getCurrentUserSession } from "@/lib/user-auth";
 
@@ -147,7 +147,9 @@ export default async function Home({ searchParams }: HomePageProps) {
         botChatUrl={buildTelegramBotChatUrlForUsername(
           telegram.runtime.botUsername,
         )}
-        miniAppUrl={buildTelegramMiniAppUrlForConfig(telegram.runtime)}
+        miniAppUrl={buildTelegramMainMiniAppUrlForUsername(
+          telegram.runtime.botUsername,
+        )}
       />
     );
   }

@@ -120,6 +120,10 @@ export async function getAffiliateSharePath(
         userId,
       }).catch(() => null);
 
+      if (preferredShareLinks?.mainMiniAppUrl) {
+        return preferredShareLinks.mainMiniAppUrl;
+      }
+
       if (preferredShareLinks?.miniAppUrl) {
         return preferredShareLinks.miniAppUrl;
       }

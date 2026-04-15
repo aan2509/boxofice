@@ -9,7 +9,7 @@ import { getOwnedPartnerBotsForUser } from "@/lib/telegram-partner-bots";
 import { getTelegramBotSettingsSafe } from "@/lib/telegram-bot-settings";
 import {
   buildTelegramBotChatUrlForUsername,
-  buildTelegramMiniAppUrlForConfig,
+  buildTelegramMainMiniAppUrlForUsername,
 } from "@/lib/telegram-miniapp";
 import { getCurrentUserSession } from "@/lib/user-auth";
 
@@ -119,12 +119,8 @@ export default async function PartnerBotSettingsPage({
         botChatUrl={buildTelegramBotChatUrlForUsername(
           telegram.runtime.botUsername,
         )}
-        miniAppUrl={buildTelegramMiniAppUrlForConfig(
-          {
-            botUsername: telegram.runtime.botUsername,
-            miniAppShortName: telegram.runtime.miniAppShortName,
-          },
-          null,
+        miniAppUrl={buildTelegramMainMiniAppUrlForUsername(
+          telegram.runtime.botUsername,
         )}
         successRedirectPath={successRedirectPath}
       />
@@ -220,15 +216,21 @@ export default async function PartnerBotSettingsPage({
               </p>
               <div className="mt-3 space-y-2 text-xs leading-6 text-neutral-400">
                 <p>
-                  Deep link:{" "}
+                  Main Mini App:{" "}
                   <span className="break-all text-neutral-200">
-                    {bot.shareLinks?.startChatUrl ?? "-"}
+                    {bot.shareLinks?.mainMiniAppUrl ?? "-"}
                   </span>
                 </p>
                 <p>
-                  Mini App:{" "}
+                  Direct link app:{" "}
                   <span className="break-all text-neutral-200">
                     {bot.shareLinks?.miniAppUrl ?? "-"}
+                  </span>
+                </p>
+                <p>
+                  Deep link chat:{" "}
+                  <span className="break-all text-neutral-200">
+                    {bot.shareLinks?.startChatUrl ?? "-"}
                   </span>
                 </p>
               </div>
