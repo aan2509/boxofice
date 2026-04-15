@@ -27,14 +27,14 @@ export async function startVipPayment(formData: FormData) {
     );
   }
 
+  let orderId = "";
+
   try {
-    const orderId = await createVipPaymentForUser({
+    orderId = await createVipPaymentForUser({
       channelCode,
       planId,
       userId: user.id,
     });
-
-    redirect(`/vip/pay/${orderId}`);
   } catch (error) {
     const message =
       error instanceof Error
@@ -45,6 +45,8 @@ export async function startVipPayment(formData: FormData) {
       `/vip?plan=${planQuery}${channelQuery}&payment=error&message=${encodeURIComponent(message)}`,
     );
   }
+
+  redirect(`/vip/pay/${orderId}`);
 }
 
 export async function checkVipPaymentStatus(formData: FormData) {
@@ -55,21 +57,15 @@ export async function checkVipPaymentStatus(formData: FormData) {
     redirect("/vip?payment=error&message=Order+pembayaran+tidak+ditemukan.");
   }
 
+  let status = "";
+
   try {
     const result = await syncVipOrderFromPaymenkuStatus({
       orderId,
       userId: user.id,
     });
 
-    if (result.status === "paid") {
-      redirect(
-        `/vip/success?orderId=${encodeURIComponent(orderId)}`,
-      );
-    }
-
-    redirect(
-      `/vip/pay/${encodeURIComponent(orderId)}?status=${encodeURIComponent(result.status)}&message=${encodeURIComponent("Status pembayaran sudah diperbarui.")}`,
-    );
+    status = result.status;
   } catch (error) {
     const message =
       error instanceof Error
@@ -80,4 +76,12 @@ export async function checkVipPaymentStatus(formData: FormData) {
       `/vip/pay/${encodeURIComponent(orderId)}?status=error&message=${encodeURIComponent(message)}`,
     );
   }
+
+  if (status === "paid") {
+    redirect(`/vip/success?orderId=${encodeURIComponent(orderId)}`);
+  }
+
+  redirect(
+    `/vip/pay/${encodeURIComponent(orderId)}?status=${encodeURIComponent(status)}&message=${encodeURIComponent("Status pembayaran sudah diperbarui.")}`,
+  );
 }
