@@ -3,6 +3,7 @@ import { Building2, CheckCircle2, Crown, QrCode } from "lucide-react";
 
 import { startVipPayment } from "@/app/vip/actions";
 import { Button } from "@/components/ui/button";
+import { PaymentSubmitButton } from "@/components/vip/payment-submit-button";
 import {
   formatCurrency,
   getPaymentGatewaySettingsSafe,
@@ -345,13 +346,7 @@ export default async function VipPage({ searchParams }: VipPageProps) {
                       Pilih QRIS atau salah satu bank, lalu lanjutkan ke detail
                       pembayaran.
                     </p>
-                    <Button
-                      type="submit"
-                      data-haptic="medium"
-                      className="mt-4 h-12 w-full bg-red-600 text-white hover:bg-red-500"
-                    >
-                      Lanjutkan pembayaran
-                    </Button>
+                    <PaymentSubmitButton />
                   </div>
                 </form>
               ) : (

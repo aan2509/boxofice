@@ -146,34 +146,49 @@ async function activateVipFromOrder(orderId: string, paidAt: Date | null) {
     return null;
   }
 
-  if (order.status === "paid") {
+  const now = paidAt ?? new Date();
+  const existingOrderExpiresAt = order.status === "paid" ? order.expiresAt : null;
+  const baseDate =
+    !existingOrderExpiresAt &&
+    order.user.vipExpiresAt &&
+    order.user.vipExpiresAt.getTime() > now.getTime()
+      ? order.user.vipExpiresAt
+      : now;
+  const nextExpiresAt =
+    existingOrderExpiresAt ?? addDays(baseDate, order.plan.durationDays);
+  const resolvedUserExpiresAt =
+    order.user.vipExpiresAt &&
+    order.user.vipExpiresAt.getTime() > nextExpiresAt.getTime()
+      ? order.user.vipExpiresAt
+      : nextExpiresAt;
+  const userAlreadyHasThisVip =
+    order.user.vipExpiresAt &&
+    order.user.vipExpiresAt.getTime() >= nextExpiresAt.getTime();
+
+  if (order.status === "paid" && userAlreadyHasThisVip) {
     return order;
   }
 
-  const now = paidAt ?? new Date();
-  const baseDate =
-    order.user.vipExpiresAt && order.user.vipExpiresAt.getTime() > now.getTime()
-      ? order.user.vipExpiresAt
-      : now;
-  const nextExpiresAt = addDays(baseDate, order.plan.durationDays);
   const metadata = getOrderPaymentMetadata(order);
   const commissionBaseAmount =
     parseAmount(metadata?.amountReceived) || order.plan.priceAmount;
 
   await prisma.$transaction(async (tx) => {
-    await tx.vipPaymentOrder.update({
-      where: { id: order.id },
-      data: {
-        expiresAt: nextExpiresAt,
-        paidAt: now,
-        status: "paid",
-      },
-    });
+    if (order.status !== "paid" || !order.expiresAt) {
+      await tx.vipPaymentOrder.update({
+        where: { id: order.id },
+        data: {
+          expiresAt: nextExpiresAt,
+          paidAt: now,
+          status: "paid",
+        },
+      });
+    }
 
     await tx.user.update({
       where: { id: order.user.id },
       data: {
-        vipExpiresAt: nextExpiresAt,
+        vipExpiresAt: resolvedUserExpiresAt,
         vipStartedAt:
           order.user.vipExpiresAt && order.user.vipExpiresAt.getTime() > now.getTime()
             ? order.user.vipStartedAt ?? now
