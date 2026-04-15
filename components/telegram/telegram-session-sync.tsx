@@ -68,8 +68,10 @@ function readStartParamFromLocation() {
   );
 }
 
-function getTelegramStartTargetPath() {
-  const movieId = extractMovieIdFromStartParam(readStartParamFromLocation());
+function getTelegramStartTargetPath(startParam?: string | null) {
+  const movieId = extractMovieIdFromStartParam(
+    startParam ?? readStartParamFromLocation(),
+  );
 
   if (movieId) {
     return `/movie/${movieId}`;
@@ -143,7 +145,9 @@ export function TelegramSessionSync() {
           activeIdentity.telegramId,
         );
 
-        const targetPath = getTelegramStartTargetPath();
+        const targetPath = getTelegramStartTargetPath(
+          activeIdentity.startParam,
+        );
 
         if (targetPath && window.location.pathname === "/") {
           window.location.replace(targetPath);

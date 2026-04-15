@@ -53,9 +53,17 @@ function readStartParamFromLocation() {
   );
 }
 
-function getTelegramStartTargetPath() {
-  const startParam = readStartParamFromLocation();
-  const movieId = extractMovieIdFromStartParam(startParam);
+function readStartParamFromInitData(initData: string | undefined) {
+  if (!initData) {
+    return "";
+  }
+
+  return new URLSearchParams(initData).get("start_param") ?? "";
+}
+
+function getTelegramStartTargetPath(startParam?: string | null) {
+  const resolvedStartParam = startParam || readStartParamFromLocation();
+  const movieId = extractMovieIdFromStartParam(resolvedStartParam);
 
   if (movieId) {
     return `/movie/${movieId}`;
@@ -79,6 +87,8 @@ export function TelegramEntryGate({
   const authenticateWithTelegram = React.useCallback(async () => {
     const webApp = getTelegramWebApp();
     const initData = webApp?.initData?.trim();
+    const resolvedStartParam =
+      readStartParamFromLocation() || readStartParamFromInitData(initData);
 
     if (!initData) {
       setStatus("Membuka bot Telegram...");
@@ -99,7 +109,7 @@ export function TelegramEntryGate({
       const response = await fetch("/api/telegram/auth", {
         body: JSON.stringify({
           initData,
-          startParam: readStartParamFromLocation(),
+          startParam: resolvedStartParam,
         }),
         headers: {
           "Content-Type": "application/json",
@@ -123,7 +133,7 @@ export function TelegramEntryGate({
 
       setStatus("Akun siap. Membuka Box Office...");
       window.location.replace(
-        getTelegramStartTargetPath() ?? successRedirectPath,
+        getTelegramStartTargetPath(resolvedStartParam) ?? successRedirectPath,
       );
     } catch (authError) {
       setError(
