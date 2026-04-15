@@ -5,11 +5,10 @@ import {
   consumeTelegramReferralIntent,
   registerAffiliateClick,
 } from "@/lib/affiliate";
-import { getTelegramBotSettingsSafe } from "@/lib/telegram-bot-settings";
 import {
   extractAffiliateCodeFromStartParam,
-  validateTelegramInitData,
 } from "@/lib/telegram-miniapp";
+import { validateTelegramInitDataWithKnownBots } from "@/lib/telegram-partner-bots";
 import { createUserSession, upsertTelegramUser } from "@/lib/user-auth";
 
 export const runtime = "nodejs";
@@ -35,16 +34,8 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const botSettings = await getTelegramBotSettingsSafe();
-
-    if (!botSettings.runtime.botToken) {
-      throw new Error("Bot token Telegram belum diatur di database maupun env.");
-    }
-
-    const telegram = validateTelegramInitData(
-      initData,
-      botSettings.runtime.botToken,
-    );
+    const { matchedBot, telegram } =
+      await validateTelegramInitDataWithKnownBots(initData);
     const user = await upsertTelegramUser(telegram);
     const fallbackStartParam =
       typeof body?.startParam === "string" ? body.startParam.trim() : "";
@@ -57,11 +48,16 @@ export async function POST(request: NextRequest) {
       !referralCodeFromInitData && !referralCodeFromUrl
         ? await consumeTelegramReferralIntent({ telegramId: telegram.user.id })
         : null;
+    const partnerReferralCode =
+      matchedBot.kind === "partner" ? matchedBot.ownerReferralCode : null;
     const referralCode =
-      referralCodeFromInitData ?? referralCodeFromUrl ?? referralCodeFromIntent;
+      partnerReferralCode ??
+      referralCodeFromInitData ??
+      referralCodeFromUrl ??
+      referralCodeFromIntent;
 
     if (referralCode) {
-      if (referralCodeFromInitData || referralCodeFromUrl) {
+      if (partnerReferralCode || referralCodeFromInitData || referralCodeFromUrl) {
         await registerAffiliateClick(referralCode).catch(() => undefined);
       }
 

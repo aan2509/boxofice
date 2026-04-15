@@ -79,6 +79,7 @@ model User {
   vipPaymentOrders  VipPaymentOrder[]
   affiliateProfile  AffiliateProfile?
   affiliateReferral AffiliateReferral?
+  partnerBots       PartnerBot[]
 }
 
 model UserSession {
@@ -193,6 +194,25 @@ model TelegramBotSettings {
   vipUrl              String   @db.Text
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
+}
+
+model PartnerBot {
+  id               String   @id @default(uuid())
+  ownerUserId      String
+  label            String?
+  telegramBotId    String   @unique
+  botToken         String   @db.Text
+  botUsername      String   @unique
+  botName          String
+  miniAppShortName String?
+  webhookSecret    String
+  active           Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  owner            User     @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+
+  @@index([ownerUserId, active])
+  @@index([active, updatedAt])
 }
 
 model VipProgramSettings {

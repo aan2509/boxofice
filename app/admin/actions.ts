@@ -3,12 +3,17 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { getAffiliateProgramSettingsSafe } from "@/lib/affiliate";
+import {
+  ensureAffiliateProfile,
+  getAffiliateProgramSettingsSafe,
+} from "@/lib/affiliate";
 import { sanitizeAdminRedirectPath } from "@/lib/admin-auth";
 import { clearAdminSessionCookie, requireAdminSession } from "@/lib/admin-session";
 import { getPaymentGatewaySettingsSafe } from "@/lib/payments";
+import { getTelegramBotProfile } from "@/lib/telegram-bot-api";
 import { sendTelegramUserMessage } from "@/lib/telegram-bot";
 import { getTelegramBotSettingsSafe } from "@/lib/telegram-bot-settings";
+import { createPartnerBotWebhookSecret } from "@/lib/telegram-partner-bots";
 import {
   auditMovieCatalog,
   cleanupMovieTitles,
@@ -582,6 +587,156 @@ export async function updateTelegramBotSettings(formData: FormData) {
 
   redirect(
     `${redirectBasePath}?bot=ok&message=${encodeURIComponent("Konfigurasi bot Telegram berhasil diperbarui.")}`,
+  );
+}
+
+export async function savePartnerBotFromAdmin(formData: FormData) {
+  await requireAdminSession();
+
+  const redirectBasePath = resolveRedirectTarget(formData, "/admin/partners");
+  const ownerUserId = readTextField(formData, "ownerUserId");
+  const partnerBotId = readNullableTextField(formData, "partnerBotId");
+  const botToken = readTextField(formData, "botToken");
+  const label = readNullableTextField(formData, "label");
+  const miniAppShortName = readNullableTextField(formData, "miniAppShortName");
+  const active = formData.get("active") === "on";
+
+  if (!ownerUserId) {
+    redirect(
+      `${redirectBasePath}?partner=error&message=${encodeURIComponent("Pemilik bot wajib dipilih.")}`,
+    );
+  }
+
+  if (!botToken) {
+    redirect(
+      `${redirectBasePath}?partner=error&message=${encodeURIComponent("Bot token Telegram wajib diisi.")}`,
+    );
+  }
+
+  const owner = await prisma.user.findUnique({
+    where: { id: ownerUserId },
+    select: {
+      id: true,
+      name: true,
+    },
+  });
+
+  if (!owner) {
+    redirect(
+      `${redirectBasePath}?partner=error&message=${encodeURIComponent("User pemilik bot tidak ditemukan.")}`,
+    );
+  }
+
+  await ensureAffiliateProfile({
+    id: owner.id,
+    name: owner.name,
+  });
+
+  const botProfile = await getTelegramBotProfile(botToken).catch((error) => {
+    redirect(
+      `${redirectBasePath}?partner=error&message=${encodeURIComponent(
+        error instanceof Error
+          ? error.message
+          : "Bot token Telegram tidak valid.",
+      )}`,
+    );
+  });
+
+  const existingByTelegramBotId = await prisma.partnerBot.findUnique({
+    where: { telegramBotId: botProfile.telegramBotId },
+    select: {
+      id: true,
+      webhookSecret: true,
+    },
+  });
+
+  if (
+    partnerBotId &&
+    existingByTelegramBotId &&
+    existingByTelegramBotId.id !== partnerBotId
+  ) {
+    redirect(
+      `${redirectBasePath}?partner=error&message=${encodeURIComponent(
+        `Bot @${botProfile.botUsername} sudah terdaftar di record lain.`,
+      )}`,
+    );
+  }
+
+  const recordId = partnerBotId || existingByTelegramBotId?.id || null;
+  const payload = {
+    active,
+    botName: botProfile.botName,
+    botToken: botToken.trim(),
+    botUsername: botProfile.botUsername,
+    label,
+    miniAppShortName,
+    ownerUserId: owner.id,
+    telegramBotId: botProfile.telegramBotId,
+    webhookSecret:
+      existingByTelegramBotId?.webhookSecret ?? createPartnerBotWebhookSecret(),
+  };
+
+  if (recordId) {
+    await prisma.partnerBot.update({
+      where: { id: recordId },
+      data: payload,
+    });
+  } else {
+    await prisma.partnerBot.create({
+      data: payload,
+    });
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/partners");
+  revalidatePath("/admin/users");
+  revalidatePath("/affiliate");
+
+  redirect(
+    `${redirectBasePath}?partner=ok&message=${encodeURIComponent(
+      `Bot @${botProfile.botUsername} berhasil ${recordId ? "diperbarui" : "ditambahkan"}.`,
+    )}`,
+  );
+}
+
+export async function deletePartnerBotFromAdmin(formData: FormData) {
+  await requireAdminSession();
+
+  const redirectBasePath = resolveRedirectTarget(formData, "/admin/partners");
+  const partnerBotId = readTextField(formData, "partnerBotId");
+
+  if (!partnerBotId) {
+    redirect(
+      `${redirectBasePath}?partner=error&message=${encodeURIComponent("Partner bot tidak ditemukan.")}`,
+    );
+  }
+
+  const existing = await prisma.partnerBot.findUnique({
+    where: { id: partnerBotId },
+    select: {
+      botUsername: true,
+      id: true,
+    },
+  });
+
+  if (!existing) {
+    redirect(
+      `${redirectBasePath}?partner=error&message=${encodeURIComponent("Partner bot tidak ditemukan.")}`,
+    );
+  }
+
+  await prisma.partnerBot.delete({
+    where: { id: existing.id },
+  });
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/partners");
+  revalidatePath("/affiliate");
+
+  redirect(
+    `${redirectBasePath}?partner=ok&message=${encodeURIComponent(
+      `Bot @${existing.botUsername} berhasil dihapus.`,
+    )}`,
   );
 }
 

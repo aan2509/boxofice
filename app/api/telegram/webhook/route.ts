@@ -6,11 +6,15 @@ import {
 } from "@/lib/affiliate";
 import {
   getTelegramBotSettingsSafe,
-  renderTelegramWelcomeMessage,
 } from "@/lib/telegram-bot-settings";
 import {
   extractAffiliateCodeFromStartParam,
 } from "@/lib/telegram-miniapp";
+import {
+  isStartCommand,
+  parseStartPayload,
+  sendTelegramWelcomeMessage,
+} from "@/lib/telegram-webhook";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,96 +32,6 @@ type TelegramUpdate = {
     text?: string;
   };
 };
-
-async function callTelegramBotApi(
-  botToken: string,
-  method: string,
-  payload: unknown,
-) {
-  const response = await fetch(
-    `https://api.telegram.org/bot${botToken}/${method}`,
-    {
-      body: JSON.stringify(payload),
-      cache: "no-store",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      method: "POST",
-    },
-  );
-
-  if (!response.ok) {
-    throw new Error(`Telegram Bot API ${method} gagal (${response.status})`);
-  }
-}
-
-function parseStartPayload(messageText: string | undefined) {
-  const text = messageText?.trim();
-
-  if (!text || !text.startsWith("/start")) {
-    return null;
-  }
-
-  const [, payload] = text.split(/\s+/, 2);
-
-  return payload?.trim() || null;
-}
-
-function isStartCommand(messageText: string | undefined) {
-  return messageText?.trim().startsWith("/start") ?? false;
-}
-
-function sanitizeAbsoluteUrl(value: string) {
-  const trimmed = value.trim();
-
-  if (!trimmed) {
-    return null;
-  }
-
-  try {
-    const url = new URL(trimmed);
-
-    if (url.protocol !== "https:" && url.protocol !== "http:") {
-      return null;
-    }
-
-    return url.toString();
-  } catch {
-    return null;
-  }
-}
-
-function createWebAppButton(text: string, url: string) {
-  return {
-    text,
-    web_app: {
-      url,
-    },
-  };
-}
-
-function appendStartParam(urlValue: string, startParam: string | null) {
-  if (!startParam) {
-    return urlValue;
-  }
-
-  try {
-    const url = new URL(urlValue);
-
-    url.searchParams.set("start_param", startParam);
-
-    return url.toString();
-  } catch {
-    return urlValue;
-  }
-}
-
-function createUrlButton(text: string, url: string) {
-  return {
-    text,
-    url,
-  };
-}
 
 export async function POST(request: NextRequest) {
   const botSettings = await getTelegramBotSettingsSafe();
@@ -155,66 +69,16 @@ export async function POST(request: NextRequest) {
   }
 
   if (typeof chatId === "number") {
-    const settings = botSettings.settings;
-    const openAppUrl = sanitizeAbsoluteUrl(settings.openAppUrl);
-    const searchUrl = sanitizeAbsoluteUrl(settings.searchUrl);
-    const affiliateUrl = sanitizeAbsoluteUrl(settings.affiliateUrl);
-    const affiliateGroupUrl = sanitizeAbsoluteUrl(settings.affiliateGroupUrl);
-    const channelUrl = sanitizeAbsoluteUrl(settings.channelUrl);
-    const supportUrl = sanitizeAbsoluteUrl(settings.supportUrl);
-    const vipUrl = sanitizeAbsoluteUrl(settings.vipUrl);
-    const inlineKeyboard = [
-      openAppUrl
-        ? [
-            createWebAppButton(
-              settings.openAppLabel,
-              appendStartParam(openAppUrl, startPayload),
-            ),
-          ]
-        : [],
-      searchUrl
-        ? [
-            createWebAppButton(
-              settings.searchLabel,
-              appendStartParam(searchUrl, startPayload),
-            ),
-          ]
-        : [],
-      affiliateUrl
-        ? [
-            createWebAppButton(
-              settings.affiliateLabel,
-              appendStartParam(affiliateUrl, startPayload),
-            ),
-          ]
-        : [],
-      [
-        affiliateGroupUrl
-          ? createUrlButton(settings.affiliateGroupLabel, affiliateGroupUrl)
-          : null,
-        channelUrl ? createUrlButton(settings.channelLabel, channelUrl) : null,
-      ].filter(Boolean),
-      [
-        supportUrl ? createUrlButton(settings.supportLabel, supportUrl) : null,
-        vipUrl
-          ? createWebAppButton(
-              settings.vipLabel,
-              appendStartParam(vipUrl, startPayload),
-            )
-          : null,
-      ].filter(Boolean),
-    ].filter((row) => row.length > 0);
-    const text = renderTelegramWelcomeMessage(settings.welcomeMessage, {
-      firstName: update?.message?.from?.first_name,
-      username: update?.message?.from?.username,
-    });
-
-    await callTelegramBotApi(botSettings.runtime.botToken, "sendMessage", {
-      chat_id: chatId,
-      reply_markup: {
-        inline_keyboard: inlineKeyboard,
+    await sendTelegramWelcomeMessage({
+      botToken: botSettings.runtime.botToken,
+      message: {
+        chatId,
+        firstName: update?.message?.from?.first_name,
+        telegramId: update?.message?.from?.id,
+        username: update?.message?.from?.username,
       },
-      text,
+      settings: botSettings.settings,
+      startParam: startPayload,
     }).catch((error) => {
       console.error("Telegram webhook sendMessage failed", error);
     });

@@ -1,26 +1,5 @@
 import { getTelegramBotSettingsSafe } from "@/lib/telegram-bot-settings";
-
-async function callTelegramBotApi(
-  botToken: string,
-  method: string,
-  payload: unknown,
-) {
-  const response = await fetch(
-    `https://api.telegram.org/bot${botToken}/${method}`,
-    {
-      body: JSON.stringify(payload),
-      cache: "no-store",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      method: "POST",
-    },
-  );
-
-  if (!response.ok) {
-    throw new Error(`Telegram Bot API ${method} gagal (${response.status})`);
-  }
-}
+import { sendTelegramBotMessage } from "@/lib/telegram-bot-api";
 
 export async function sendTelegramUserMessage(input: {
   telegramId: string | null | undefined;
@@ -36,8 +15,9 @@ export async function sendTelegramUserMessage(input: {
     return false;
   }
 
-  await callTelegramBotApi(settings.runtime.botToken, "sendMessage", {
-    chat_id: input.telegramId,
+  await sendTelegramBotMessage({
+    botToken: settings.runtime.botToken,
+    chatId: input.telegramId,
     text: input.text,
   });
 

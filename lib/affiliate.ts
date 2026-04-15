@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 
 import { prisma } from "@/lib/prisma";
+import { getPreferredPartnerBotShareLink } from "@/lib/telegram-partner-bots";
 import { getTelegramBotSettingsSafe } from "@/lib/telegram-bot-settings";
 import { buildAffiliateStartParam, buildTelegramBotChatUrlForUsername } from "@/lib/telegram-miniapp";
 
@@ -87,7 +88,21 @@ async function generateUniqueReferralCode(name: string) {
   return `${base}${Date.now().toString(36).toUpperCase()}`;
 }
 
-export async function getAffiliateSharePath(referralCode: string) {
+export async function getAffiliateSharePath(
+  referralCode: string,
+  userId?: string,
+) {
+  if (userId) {
+    const partnerShareLink = await getPreferredPartnerBotShareLink({
+      referralCode,
+      userId,
+    }).catch(() => null);
+
+    if (partnerShareLink) {
+      return partnerShareLink;
+    }
+  }
+
   try {
     const telegram = await getTelegramBotSettingsSafe();
 

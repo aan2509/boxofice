@@ -166,7 +166,7 @@ export default async function AffiliatePage() {
           }))}
           pendingBalanceLabel={formatCurrency(profile.pendingBalance)}
           referralCode={profile.referralCode}
-          referralUrl={await getAffiliateSharePath(profile.referralCode)}
+          referralUrl={await getAffiliateSharePath(profile.referralCode, user.id)}
           signups={profile.totalSignups}
           totalCommissionLabel={formatCurrency(profile.totalCommission)}
           withdrawnBalanceLabel={formatCurrency(profile.withdrawnBalance)}

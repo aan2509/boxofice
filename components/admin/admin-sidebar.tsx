@@ -6,6 +6,7 @@ import {
   Crown,
   Home,
   Landmark,
+  Link2,
   Percent,
   RefreshCw,
   ShieldCheck,
@@ -48,6 +49,13 @@ const items = [
     icon: Bot,
     label: "Settings bot",
     match: (pathname: string) => pathname.startsWith("/admin/settings"),
+  },
+  {
+    description: "Daftarkan bot milik partner affiliate",
+    href: "/admin/partners",
+    icon: Link2,
+    label: "Bot partner",
+    match: (pathname: string) => pathname.startsWith("/admin/partners"),
   },
   {
     description: "Atur presentase komisi affiliate",
