@@ -90,6 +90,23 @@ function normalizeChannelType(value: string | null | undefined) {
   return value?.trim().toLowerCase() === "qris" ? "qris" : "va";
 }
 
+function isLikelyVipOrderExpiry(input: {
+  durationDays: number;
+  expiresAt: Date | null;
+  paidAt: Date | null;
+}) {
+  if (!input.expiresAt || !input.paidAt) {
+    return false;
+  }
+
+  const minimumVipExpiry = addDays(
+    input.paidAt,
+    Math.max(input.durationDays - 1, 1),
+  );
+
+  return input.expiresAt.getTime() >= minimumVipExpiry.getTime();
+}
+
 function ensurePaymentSchemaReady(schemaReady: boolean, schemaIssue: string | null) {
   if (!schemaReady) {
     throw new Error(
@@ -147,7 +164,15 @@ async function activateVipFromOrder(orderId: string, paidAt: Date | null) {
   }
 
   const now = paidAt ?? new Date();
-  const existingOrderExpiresAt = order.status === "paid" ? order.expiresAt : null;
+  const existingOrderExpiresAt =
+    order.status === "paid" &&
+    isLikelyVipOrderExpiry({
+      durationDays: order.plan.durationDays,
+      expiresAt: order.expiresAt,
+      paidAt: order.paidAt ?? paidAt,
+    })
+      ? order.expiresAt
+      : null;
   const baseDate =
     !existingOrderExpiresAt &&
     order.user.vipExpiresAt &&
@@ -164,17 +189,28 @@ async function activateVipFromOrder(orderId: string, paidAt: Date | null) {
   const userAlreadyHasThisVip =
     order.user.vipExpiresAt &&
     order.user.vipExpiresAt.getTime() >= nextExpiresAt.getTime();
-
-  if (order.status === "paid" && userAlreadyHasThisVip) {
-    return order;
-  }
-
   const metadata = getOrderPaymentMetadata(order);
   const commissionBaseAmount =
     parseAmount(metadata?.amountReceived) || order.plan.priceAmount;
 
+  if (order.status === "paid" && userAlreadyHasThisVip) {
+    await applyAffiliateCommissionForVipOrder({
+      amount: commissionBaseAmount,
+      orderId: order.id,
+      referredUserId: order.user.id,
+    }).catch(() => null);
+
+    return order;
+  }
+
+  const shouldUpdateOrderVipExpiry =
+    order.status !== "paid" ||
+    !order.expiresAt ||
+    !existingOrderExpiresAt ||
+    order.expiresAt.getTime() !== nextExpiresAt.getTime();
+
   await prisma.$transaction(async (tx) => {
-    if (order.status !== "paid" || !order.expiresAt) {
+    if (shouldUpdateOrderVipExpiry) {
       await tx.vipPaymentOrder.update({
         where: { id: order.id },
         data: {
@@ -219,6 +255,42 @@ async function activateVipFromOrder(orderId: string, paidAt: Date | null) {
   }).catch(() => null);
 
   return order;
+}
+
+export async function repairPaidVipOrdersForUser(userId: string) {
+  const orders = await prisma.vipPaymentOrder.findMany({
+    where: {
+      status: "paid",
+      userId,
+    },
+    orderBy: {
+      paidAt: "asc",
+    },
+    select: {
+      id: true,
+      paidAt: true,
+    },
+  });
+
+  for (const order of orders) {
+    await activateVipFromOrder(order.id, order.paidAt).catch(() => null);
+  }
+
+  return prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      email: true,
+      id: true,
+      name: true,
+      telegramFirstName: true,
+      telegramId: true,
+      telegramLastName: true,
+      telegramPhotoUrl: true,
+      telegramUsername: true,
+      vipExpiresAt: true,
+      vipStartedAt: true,
+    },
+  });
 }
 
 export async function createVipPaymentForUser(input: {

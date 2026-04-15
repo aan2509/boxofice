@@ -5,6 +5,7 @@ import { MessageCircle, Sparkles, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getCinematicBackdropMovies } from "@/lib/movie-feeds";
 import { requireUserSession } from "@/lib/user-auth";
+import { repairPaidVipOrdersForUser } from "@/lib/vip-checkout";
 import { getVipProgramSettingsSafe, getVipStatus } from "@/lib/vip";
 
 function initials(name: string) {
@@ -17,11 +18,14 @@ function initials(name: string) {
 }
 
 export default async function ProfilePage() {
-  const [user, backdropMovies, vipSettingsResult] = await Promise.all([
+  const [sessionUser, backdropMovies, vipSettingsResult] = await Promise.all([
     requireUserSession(),
     getCinematicBackdropMovies(),
     getVipProgramSettingsSafe(),
   ]);
+  const user =
+    (await repairPaidVipOrdersForUser(sessionUser.id).catch(() => null)) ??
+    sessionUser;
   const vipStatus = getVipStatus(user);
   const vipSettings = vipSettingsResult.settings;
 

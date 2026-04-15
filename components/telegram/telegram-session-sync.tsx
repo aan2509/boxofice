@@ -40,12 +40,30 @@ function readInitDataIdentity(initData: string) {
 
     return {
       authDate: params.get("auth_date") ?? "",
-      startParam: params.get("start_param") ?? "",
+      startParam:
+        params.get("start_param") ??
+        readStartParamFromLocation() ??
+        "",
       telegramId,
     };
   } catch {
     return null;
   }
+}
+
+function readStartParamFromLocation() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const params = new URLSearchParams(window.location.search);
+
+  return (
+    params.get("start_param") ??
+    params.get("startapp") ??
+    params.get("tgWebAppStartParam") ??
+    params.get("ref")
+  );
 }
 
 export function TelegramSessionSync() {
@@ -78,13 +96,8 @@ export function TelegramSessionSync() {
     const lastTelegramId = window.localStorage.getItem(
       "boxofice_last_telegram_id",
     );
-    const alreadySynced = window.sessionStorage.getItem(storageKey) === "1";
     const shouldShowOverlay =
       Boolean(lastTelegramId) && lastTelegramId !== activeIdentity.telegramId;
-
-    if (alreadySynced) {
-      return;
-    }
 
     let cancelled = false;
 
@@ -95,7 +108,10 @@ export function TelegramSessionSync() {
 
       try {
         const response = await fetch("/api/telegram/auth", {
-          body: JSON.stringify({ initData }),
+          body: JSON.stringify({
+            initData,
+            startParam: activeIdentity.startParam,
+          }),
           headers: {
             "Content-Type": "application/json",
           },

@@ -12,6 +12,7 @@ import {
 } from "@/lib/payments";
 import { getTelegramBotSettingsSafe } from "@/lib/telegram-bot-settings";
 import { requireUserSession } from "@/lib/user-auth";
+import { repairPaidVipOrdersForUser } from "@/lib/vip-checkout";
 import { getVipProgramSettingsSafe, getVipStatus } from "@/lib/vip";
 
 export const dynamic = "force-dynamic";
@@ -68,7 +69,10 @@ function PaymentAlert({
 
 export default async function VipPage({ searchParams }: VipPageProps) {
   const params = await searchParams;
-  const user = await requireUserSession();
+  const sessionUser = await requireUserSession();
+  const user =
+    (await repairPaidVipOrdersForUser(sessionUser.id).catch(() => null)) ??
+    sessionUser;
   const [
     vipSettingsResult,
     telegramSettingsResult,

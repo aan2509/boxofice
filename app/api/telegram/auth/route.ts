@@ -1,6 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { attachAffiliateReferral, registerAffiliateClick } from "@/lib/affiliate";
+import {
+  attachAffiliateReferral,
+  consumeTelegramReferralIntent,
+  registerAffiliateClick,
+} from "@/lib/affiliate";
 import { getTelegramBotSettingsSafe } from "@/lib/telegram-bot-settings";
 import {
   extractAffiliateCodeFromStartParam,
@@ -13,6 +17,7 @@ export const dynamic = "force-dynamic";
 
 type TelegramAuthRequestBody = {
   initData?: unknown;
+  startParam?: unknown;
 };
 
 export async function POST(request: NextRequest) {
@@ -41,10 +46,25 @@ export async function POST(request: NextRequest) {
       botSettings.runtime.botToken,
     );
     const user = await upsertTelegramUser(telegram);
-    const referralCode = extractAffiliateCodeFromStartParam(telegram.startParam);
+    const fallbackStartParam =
+      typeof body?.startParam === "string" ? body.startParam.trim() : "";
+    const referralCodeFromInitData = extractAffiliateCodeFromStartParam(
+      telegram.startParam,
+    );
+    const referralCodeFromUrl =
+      extractAffiliateCodeFromStartParam(fallbackStartParam);
+    const referralCodeFromIntent =
+      !referralCodeFromInitData && !referralCodeFromUrl
+        ? await consumeTelegramReferralIntent({ telegramId: telegram.user.id })
+        : null;
+    const referralCode =
+      referralCodeFromInitData ?? referralCodeFromUrl ?? referralCodeFromIntent;
 
     if (referralCode) {
-      await registerAffiliateClick(referralCode).catch(() => undefined);
+      if (referralCodeFromInitData || referralCodeFromUrl) {
+        await registerAffiliateClick(referralCode).catch(() => undefined);
+      }
+
       await attachAffiliateReferral({
         referralCode,
         referredUserId: user.id,

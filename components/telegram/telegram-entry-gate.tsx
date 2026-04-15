@@ -36,6 +36,22 @@ function getTelegramWebApp() {
   return (window as TelegramWindow).Telegram?.WebApp ?? null;
 }
 
+function readStartParamFromLocation() {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  const params = new URLSearchParams(window.location.search);
+
+  return (
+    params.get("start_param") ??
+    params.get("startapp") ??
+    params.get("tgWebAppStartParam") ??
+    params.get("ref") ??
+    ""
+  );
+}
+
 export function TelegramEntryGate({
   adminLoginUrl,
   botChatUrl,
@@ -69,7 +85,10 @@ export function TelegramEntryGate({
 
     try {
       const response = await fetch("/api/telegram/auth", {
-        body: JSON.stringify({ initData }),
+        body: JSON.stringify({
+          initData,
+          startParam: readStartParamFromLocation(),
+        }),
         headers: {
           "Content-Type": "application/json",
         },

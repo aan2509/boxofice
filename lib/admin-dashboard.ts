@@ -101,6 +101,8 @@ export async function getAdminUserTableData(query: string | undefined) {
         email: true,
         id: true,
         name: true,
+        telegramId: true,
+        telegramUsername: true,
         vipExpiresAt: true,
         vipStartedAt: true,
         _count: {
@@ -128,6 +130,8 @@ export async function getAdminUserTableData(query: string | undefined) {
                   select: {
                     email: true,
                     name: true,
+                    telegramId: true,
+                    telegramUsername: true,
                   },
                 },
               },
@@ -184,6 +188,8 @@ export async function getAdminUserTableData(query: string | undefined) {
         email: true,
         id: true,
         name: true,
+        telegramId: true,
+        telegramUsername: true,
         vipExpiresAt: true,
         vipStartedAt: true,
         _count: {

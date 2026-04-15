@@ -207,8 +207,15 @@ export default async function AdminUsersPage({
                           {user.name}
                         </p>
                         <p className="mt-1 text-sm text-neutral-400">
-                          {user.email}
+                          {user.telegramUsername
+                            ? `@${user.telegramUsername}`
+                            : user.email ?? "Tanpa username"}
                         </p>
+                        {user.telegramId ? (
+                          <p className="mt-1 text-xs text-neutral-500">
+                            Telegram ID {user.telegramId}
+                          </p>
+                        ) : null}
                         {profile?.referralCode ? (
                           <p className="mt-2 text-xs font-medium text-orange-200">
                             Kode {profile.referralCode}
@@ -222,8 +229,15 @@ export default async function AdminUsersPage({
                               {referredBy.name}
                             </p>
                             <p className="mt-1 text-neutral-400">
-                              {referredBy.email}
+                              {referredBy.telegramUsername
+                                ? `@${referredBy.telegramUsername}`
+                                : referredBy.email ?? "Tanpa username"}
                             </p>
+                            {referredBy.telegramId ? (
+                              <p className="mt-1 text-xs text-neutral-500">
+                                Telegram ID {referredBy.telegramId}
+                              </p>
+                            ) : null}
                             {referredCode ? (
                               <p className="mt-2 text-xs text-orange-200">
                                 via {referredCode}

@@ -1,6 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { registerAffiliateClick } from "@/lib/affiliate";
+import {
+  registerAffiliateClick,
+  saveTelegramReferralIntent,
+} from "@/lib/affiliate";
 import {
   getTelegramBotSettingsSafe,
   renderTelegramWelcomeMessage,
@@ -19,6 +22,7 @@ type TelegramUpdate = {
     };
     from?: {
       first_name?: string;
+      id?: number;
       username?: string;
     };
     text?: string;
@@ -92,6 +96,22 @@ function createWebAppButton(text: string, url: string) {
   };
 }
 
+function appendStartParam(urlValue: string, startParam: string | null) {
+  if (!startParam) {
+    return urlValue;
+  }
+
+  try {
+    const url = new URL(urlValue);
+
+    url.searchParams.set("start_param", startParam);
+
+    return url.toString();
+  } catch {
+    return urlValue;
+  }
+}
+
 function createUrlButton(text: string, url: string) {
   return {
     text,
@@ -128,6 +148,10 @@ export async function POST(request: NextRequest) {
 
   if (referralCode) {
     await registerAffiliateClick(referralCode).catch(() => undefined);
+    await saveTelegramReferralIntent({
+      referralCode,
+      telegramId: update?.message?.from?.id,
+    }).catch(() => undefined);
   }
 
   if (typeof chatId === "number") {
@@ -140,10 +164,29 @@ export async function POST(request: NextRequest) {
     const supportUrl = sanitizeAbsoluteUrl(settings.supportUrl);
     const vipUrl = sanitizeAbsoluteUrl(settings.vipUrl);
     const inlineKeyboard = [
-      openAppUrl ? [createWebAppButton(settings.openAppLabel, openAppUrl)] : [],
-      searchUrl ? [createWebAppButton(settings.searchLabel, searchUrl)] : [],
+      openAppUrl
+        ? [
+            createWebAppButton(
+              settings.openAppLabel,
+              appendStartParam(openAppUrl, startPayload),
+            ),
+          ]
+        : [],
+      searchUrl
+        ? [
+            createWebAppButton(
+              settings.searchLabel,
+              appendStartParam(searchUrl, startPayload),
+            ),
+          ]
+        : [],
       affiliateUrl
-        ? [createWebAppButton(settings.affiliateLabel, affiliateUrl)]
+        ? [
+            createWebAppButton(
+              settings.affiliateLabel,
+              appendStartParam(affiliateUrl, startPayload),
+            ),
+          ]
         : [],
       [
         affiliateGroupUrl
@@ -153,7 +196,12 @@ export async function POST(request: NextRequest) {
       ].filter(Boolean),
       [
         supportUrl ? createUrlButton(settings.supportLabel, supportUrl) : null,
-        vipUrl ? createWebAppButton(settings.vipLabel, vipUrl) : null,
+        vipUrl
+          ? createWebAppButton(
+              settings.vipLabel,
+              appendStartParam(vipUrl, startPayload),
+            )
+          : null,
       ].filter(Boolean),
     ].filter((row) => row.length > 0);
     const text = renderTelegramWelcomeMessage(settings.welcomeMessage, {

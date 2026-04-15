@@ -54,7 +54,8 @@ function isMissingAffiliateSchemaError(error: unknown) {
   return (
     message.includes("AffiliateProgramSettings") ||
     message.includes("commissionRate") ||
-    message.includes("AffiliateProfile")
+    message.includes("AffiliateProfile") ||
+    message.includes("TelegramReferralIntent")
   );
 }
 
@@ -285,6 +286,79 @@ export async function registerAffiliateClick(referralCode: string) {
   });
 
   return profile.id;
+}
+
+export async function saveTelegramReferralIntent(input: {
+  referralCode: string;
+  telegramId: string | number | null | undefined;
+}) {
+  const telegramId = String(input.telegramId ?? "").trim();
+  const normalizedCode = normalizeReferralCode(input.referralCode);
+
+  if (!telegramId || !normalizedCode) {
+    return null;
+  }
+
+  try {
+    return await prisma.telegramReferralIntent.upsert({
+      where: { telegramId },
+      update: {
+        consumedAt: null,
+        referralCode: normalizedCode,
+      },
+      create: {
+        referralCode: normalizedCode,
+        telegramId,
+      },
+      select: { id: true },
+    });
+  } catch (error) {
+    if (isMissingAffiliateSchemaError(error)) {
+      return null;
+    }
+
+    throw error;
+  }
+}
+
+export async function consumeTelegramReferralIntent(input: {
+  telegramId: string | number | null | undefined;
+}) {
+  const telegramId = String(input.telegramId ?? "").trim();
+
+  if (!telegramId) {
+    return null;
+  }
+
+  try {
+    const intent = await prisma.telegramReferralIntent.findUnique({
+      where: { telegramId },
+      select: {
+        consumedAt: true,
+        id: true,
+        referralCode: true,
+      },
+    });
+
+    if (!intent || intent.consumedAt) {
+      return null;
+    }
+
+    await prisma.telegramReferralIntent.update({
+      where: { id: intent.id },
+      data: {
+        consumedAt: new Date(),
+      },
+    });
+
+    return normalizeReferralCode(intent.referralCode);
+  } catch (error) {
+    if (isMissingAffiliateSchemaError(error)) {
+      return null;
+    }
+
+    throw error;
+  }
 }
 
 export async function attachAffiliateReferral(input: {
