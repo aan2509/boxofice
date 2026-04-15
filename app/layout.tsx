@@ -4,6 +4,7 @@ import Script from "next/script";
 
 import { HapticFeedback } from "@/components/feedback/haptic-feedback";
 import { MobileBottomNav } from "@/components/navigation/mobile-bottom-nav";
+import { TelegramAppChrome } from "@/components/telegram/telegram-app-chrome";
 import { USER_SESSION_COOKIE } from "@/lib/user-auth";
 import "./globals.css";
 
@@ -24,6 +25,7 @@ export default async function RootLayout({
     <html lang="id" className="h-full antialiased">
       <body className="min-h-full flex flex-col">
         {children}
+        <TelegramAppChrome />
         <HapticFeedback />
         {hasUserSession ? <MobileBottomNav /> : null}
         <Script

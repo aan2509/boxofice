@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 type WatchPlayerProps = {
   autoPlay?: boolean;
   defaultQuality?: string;
+  immersiveRequestId?: number;
   initialProgressSeconds?: number;
   movieId?: string;
   poster?: string | null;
@@ -47,6 +48,20 @@ type VideoElementWithFastSeek = HTMLVideoElement & {
   fastSeek?: (time: number) => void;
   webkitEnterFullscreen?: () => void;
   webkitSupportsFullscreen?: boolean;
+};
+
+type TelegramWebApp = {
+  exitFullscreen?: () => void;
+  expand?: () => void;
+  isVersionAtLeast?: (version: string) => boolean;
+  requestFullscreen?: () => void;
+  setHeaderColor?: (color: string) => void;
+};
+
+type TelegramWindow = Window & {
+  Telegram?: {
+    WebApp?: TelegramWebApp;
+  };
 };
 
 function isHlsSource(source: CachedStreamSource) {
@@ -109,9 +124,18 @@ function unlockOrientationIfPossible() {
   screen.orientation?.unlock?.();
 }
 
+function getTelegramWebApp() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  return (window as TelegramWindow).Telegram?.WebApp ?? null;
+}
+
 export function WatchPlayer({
   autoPlay = false,
   defaultQuality,
+  immersiveRequestId = 0,
   initialProgressSeconds = 0,
   movieId,
   poster,
@@ -126,6 +150,7 @@ export function WatchPlayer({
   }, [movieId, sourceUrl]);
   const videoRef = React.useRef<HTMLVideoElement | null>(null);
   const hlsRef = React.useRef<Hls | null>(null);
+  const hideChromeTimeoutRef = React.useRef<number | null>(null);
   const lastTapRef = React.useRef<{ time: number; x: number } | null>(null);
   const resumeSnapshotRef = React.useRef<{
     time: number;
@@ -150,7 +175,9 @@ export function WatchPlayer({
   );
   const [failedSourceUrls, setFailedSourceUrls] = React.useState<string[]>([]);
   const [isImmersive, setIsImmersive] = React.useState(false);
+  const [isPlaying, setIsPlaying] = React.useState(false);
   const [isPortraitViewport, setIsPortraitViewport] = React.useState(false);
+  const [showChrome, setShowChrome] = React.useState(true);
   const [retryCount, setRetryCount] = React.useState(0);
 
   React.useEffect(() => {
@@ -220,6 +247,68 @@ export function WatchPlayer({
     sources.find((source) => source.url === selectedSourceUrl) ??
     chooseDefaultSource(sources, defaultQuality) ??
     null;
+
+  const clearHideChromeTimer = React.useCallback(() => {
+    if (hideChromeTimeoutRef.current !== null) {
+      window.clearTimeout(hideChromeTimeoutRef.current);
+      hideChromeTimeoutRef.current = null;
+    }
+  }, []);
+
+  const revealChrome = React.useCallback(() => {
+    setShowChrome(true);
+  }, []);
+
+  const scheduleHideChrome = React.useCallback(() => {
+    clearHideChromeTimer();
+
+    if (!isImmersive || !isPlaying) {
+      return;
+    }
+
+    hideChromeTimeoutRef.current = window.setTimeout(() => {
+      setShowChrome(false);
+    }, 2200);
+  }, [clearHideChromeTimer, isImmersive, isPlaying]);
+
+  const pulseChrome = React.useCallback(() => {
+    revealChrome();
+    scheduleHideChrome();
+  }, [revealChrome, scheduleHideChrome]);
+
+  const enterImmersive = React.useCallback(async () => {
+    const telegram = getTelegramWebApp();
+
+    setIsImmersive(true);
+    revealChrome();
+    telegram?.setHeaderColor?.("#000000");
+    telegram?.expand?.();
+
+    if (telegram?.requestFullscreen && telegram.isVersionAtLeast?.("8.0")) {
+      telegram.requestFullscreen();
+    }
+
+    await lockLandscapeIfPossible();
+    scheduleHideChrome();
+  }, [revealChrome, scheduleHideChrome]);
+
+  const exitImmersive = React.useCallback(async () => {
+    const telegram = getTelegramWebApp();
+
+    setIsImmersive(false);
+    revealChrome();
+    telegram?.exitFullscreen?.();
+    unlockOrientationIfPossible();
+  }, [revealChrome]);
+
+  const toggleFullscreen = React.useCallback(() => {
+    if (isImmersive) {
+      void exitImmersive();
+      return;
+    }
+
+    void enterImmersive();
+  }, [enterImmersive, exitImmersive, isImmersive]);
 
   const moveToNextPlayableSource = React.useCallback(
     (failedUrl: string) => {
@@ -523,6 +612,41 @@ export function WatchPlayer({
   }, [movieId, sources.length]);
 
   React.useEffect(() => {
+    const video = videoRef.current;
+
+    if (!video) {
+      return;
+    }
+
+    function handlePlay() {
+      setIsPlaying(true);
+      scheduleHideChrome();
+    }
+
+    function handlePause() {
+      setIsPlaying(false);
+      revealChrome();
+      clearHideChromeTimer();
+    }
+
+    function handleEnded() {
+      setIsPlaying(false);
+      revealChrome();
+      clearHideChromeTimer();
+    }
+
+    video.addEventListener("play", handlePlay);
+    video.addEventListener("pause", handlePause);
+    video.addEventListener("ended", handleEnded);
+
+    return () => {
+      video.removeEventListener("play", handlePlay);
+      video.removeEventListener("pause", handlePause);
+      video.removeEventListener("ended", handleEnded);
+    };
+  }, [clearHideChromeTimer, revealChrome, scheduleHideChrome, sources.length]);
+
+  React.useEffect(() => {
     function handleViewportChange() {
       if (typeof window === "undefined") {
         return;
@@ -542,20 +666,40 @@ export function WatchPlayer({
   }, []);
 
   React.useEffect(() => {
+    if (immersiveRequestId <= 0) {
+      return;
+    }
+
+    void enterImmersive();
+  }, [enterImmersive, immersiveRequestId]);
+
+  React.useEffect(() => {
     if (!isImmersive) {
       document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
       unlockOrientationIfPossible();
+      revealChrome();
+      clearHideChromeTimer();
       return;
     }
 
     document.body.style.overflow = "hidden";
-    void lockLandscapeIfPossible();
+    document.documentElement.style.overflow = "hidden";
+    revealChrome();
+    scheduleHideChrome();
 
     return () => {
       document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
       unlockOrientationIfPossible();
+      clearHideChromeTimer();
     };
-  }, [isImmersive]);
+  }, [
+    clearHideChromeTimer,
+    isImmersive,
+    revealChrome,
+    scheduleHideChrome,
+  ]);
 
   React.useEffect(() => {
     if (!seekFeedback) {
@@ -568,6 +712,27 @@ export function WatchPlayer({
       window.clearTimeout(timeoutId);
     };
   }, [seekFeedback]);
+
+  React.useEffect(() => {
+    if (!isImmersive) {
+      return;
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape") {
+        return;
+      }
+
+      event.preventDefault();
+      void exitImmersive();
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [exitImmersive, isImmersive]);
 
   function seekBy(seconds: number) {
     const video = videoRef.current;
@@ -597,6 +762,7 @@ export function WatchPlayer({
   function handlePointerDoubleTap(clientX: number, width: number) {
     const isLeftSide = clientX < width / 2;
     seekBy(isLeftSide ? -10 : 10);
+    pulseChrome();
   }
 
   function handleDoubleClick(event: React.MouseEvent<HTMLDivElement>) {
@@ -606,6 +772,7 @@ export function WatchPlayer({
       return;
     }
 
+    pulseChrome();
     const bounds = event.currentTarget.getBoundingClientRect();
     handlePointerDoubleTap(event.clientX - bounds.left, bounds.width);
   }
@@ -634,6 +801,7 @@ export function WatchPlayer({
       return;
     }
 
+    pulseChrome();
     lastTapRef.current = { time: now, x };
   }
 
@@ -644,10 +812,7 @@ export function WatchPlayer({
       shouldPlay: video ? !video.paused : false,
     };
     setSelectedSourceUrl(source.url);
-  }
-
-  function toggleFullscreen() {
-    setIsImmersive((current) => !current);
+    pulseChrome();
   }
 
   const shouldRotateImmersive = isImmersive && isPortraitViewport;
@@ -717,65 +882,100 @@ export function WatchPlayer({
 
   return (
     <div
+      onMouseMove={pulseChrome}
+      onTouchStart={pulseChrome}
       onDoubleClick={handleDoubleClick}
       onTouchEnd={handleTouchEnd}
       className={cn(
         "relative aspect-video overflow-hidden bg-black ring-1 ring-white/10 sm:rounded-md",
-        isImmersive && "fixed inset-0 z-[80] aspect-auto rounded-none ring-0",
+        isImmersive && "fixed inset-0 z-[90] aspect-auto rounded-none bg-black ring-0",
       )}
     >
       <div
         className={cn(
-          "relative h-full w-full",
-          isImmersive && "bg-black",
+          "relative flex h-full w-full items-center justify-center bg-black",
           shouldRotateImmersive &&
             "absolute left-1/2 top-1/2 h-[100vw] w-[100dvh] -translate-x-1/2 -translate-y-1/2 rotate-90",
         )}
       >
         <video
           ref={videoRef}
-          className="h-full w-full bg-black"
+          className="h-full w-full bg-black object-contain"
           poster={poster ?? undefined}
           playsInline
           controls
         />
-        {sources.length > 1 ? (
-          <div className="absolute right-2 top-2 z-20 flex max-w-[calc(100%-1rem)] gap-1 overflow-x-auto rounded-md bg-black/65 p-1 backdrop-blur">
-            {sources.map((source) => (
+        <div
+          className={cn(
+            "absolute inset-x-0 top-0 z-20 transition-opacity duration-300",
+            !isImmersive || showChrome
+              ? "opacity-100"
+              : "pointer-events-none opacity-0",
+          )}
+        >
+          <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/85 via-black/30 to-transparent" />
+          <div className="relative flex items-start justify-between gap-3 p-3">
+            {isImmersive ? (
               <button
-                key={source.url}
                 type="button"
-                onClick={() => selectSource(source)}
-                data-haptic="light"
-                className={cn(
-                  "shrink-0 rounded-md border px-2.5 py-1 text-xs font-semibold transition-colors sm:px-3 sm:py-1.5 sm:text-sm",
-                  source.url === selectedSource?.url
-                    ? "border-white bg-white text-neutral-950"
-                    : "border-white/15 bg-neutral-900 text-neutral-100 hover:bg-neutral-800",
-                )}
+                onClick={() => void exitImmersive()}
+                data-haptic="medium"
+                className="inline-flex h-11 items-center gap-2 rounded-full border border-white/10 bg-black/65 px-4 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(0,0,0,0.38)] backdrop-blur"
               >
-                {source.label}
+                <Minimize className="size-4" />
+                Tutup
               </button>
-            ))}
+            ) : (
+              <div />
+            )}
+
+            <div className="flex max-w-[calc(100%-4rem)] flex-wrap justify-end gap-2">
+              {sources.length > 1 ? (
+                <div className="flex max-w-full gap-1 overflow-x-auto rounded-full border border-white/10 bg-black/65 p-1 backdrop-blur [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  {sources.map((source) => (
+                    <button
+                      key={source.url}
+                      type="button"
+                      onClick={() => selectSource(source)}
+                      data-haptic="light"
+                      className={cn(
+                        "shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors",
+                        source.url === selectedSource?.url
+                          ? "bg-white text-neutral-950"
+                          : "bg-transparent text-neutral-100 hover:bg-white/10",
+                      )}
+                    >
+                      {source.label}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+
+              {!isImmersive ? (
+                <button
+                  type="button"
+                  onClick={toggleFullscreen}
+                  data-haptic="medium"
+                  className="inline-flex h-11 items-center gap-2 rounded-full border border-white/10 bg-black/65 px-4 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(0,0,0,0.32)] backdrop-blur"
+                >
+                  <Expand className="size-4" />
+                  Layar penuh
+                </button>
+              ) : null}
+            </div>
+          </div>
+        </div>
+
+        {isImmersive ? (
+          <div
+            className={cn(
+              "absolute inset-x-0 bottom-0 z-20 transition-opacity duration-300",
+              showChrome ? "opacity-100" : "pointer-events-none opacity-0",
+            )}
+          >
+            <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
           </div>
         ) : null}
-        <div className="absolute bottom-2 right-2 z-20">
-          <button
-            type="button"
-            onClick={toggleFullscreen}
-            data-haptic="medium"
-            className="inline-flex h-10 items-center gap-2 rounded-md border border-white/10 bg-black/65 px-3 text-xs font-semibold text-white backdrop-blur transition-colors hover:bg-black/80"
-          >
-            {isImmersive ? (
-              <Minimize className="size-4" />
-            ) : (
-              <Expand className="size-4" />
-            )}
-            <span className="hidden sm:inline">
-              {isImmersive ? "Tutup layar penuh" : "Layar penuh"}
-            </span>
-          </button>
-        </div>
         {seekFeedback ? (
           <div
             key={seekFeedback.key}

@@ -29,6 +29,9 @@ export function DetailWatchActions({
 }: DetailWatchActionsProps) {
   const playerRef = React.useRef<HTMLDivElement | null>(null);
   const [isPlayerOpen, setIsPlayerOpen] = React.useState(initialOpen);
+  const [immersiveRequestId, setImmersiveRequestId] = React.useState(
+    initialOpen ? 1 : 0,
+  );
 
   React.useEffect(() => {
     if (initialOpen) {
@@ -69,6 +72,7 @@ export function DetailWatchActions({
 
   function playInline() {
     if (isPlayerOpen) {
+      setImmersiveRequestId((value) => value + 1);
       playerRef.current?.scrollIntoView({
         behavior: "smooth",
         block: "center",
@@ -76,6 +80,7 @@ export function DetailWatchActions({
       return;
     }
 
+    setImmersiveRequestId((value) => value + 1);
     setIsPlayerOpen(true);
   }
 
@@ -118,6 +123,7 @@ export function DetailWatchActions({
             key={movieId}
             autoPlay
             defaultQuality="480p"
+            immersiveRequestId={immersiveRequestId}
             movieId={movieId}
             poster={poster}
           />
