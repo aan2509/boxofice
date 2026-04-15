@@ -13,10 +13,13 @@ import {
 } from "@/lib/stream-cache-client";
 
 type DetailWatchActionsProps = {
+  authBotChatUrl?: string | null;
+  authMiniAppUrl?: string | null;
   initialSaved: boolean;
   initialOpen?: boolean;
   movieId: string;
   poster?: string | null;
+  requiresAuth?: boolean;
   shareText?: string;
   shareUrl?: string;
   telegramShareUrl?: string | null;
@@ -24,10 +27,13 @@ type DetailWatchActionsProps = {
 };
 
 export function DetailWatchActions({
+  authBotChatUrl,
+  authMiniAppUrl,
   initialSaved,
   initialOpen = false,
   movieId,
   poster,
+  requiresAuth = false,
   shareText,
   shareUrl,
   telegramShareUrl,
@@ -81,6 +87,11 @@ export function DetailWatchActions({
   }, [isPlayerOpen]);
 
   function playInline() {
+    if (requiresAuth) {
+      window.location.href = authMiniAppUrl || authBotChatUrl || "/admin/login";
+      return;
+    }
+
     if (isPlayerOpen) {
       setImmersiveRequestId((value) => value + 1);
       playerRef.current?.scrollIntoView({
@@ -106,12 +117,18 @@ export function DetailWatchActions({
             className="h-12 w-full bg-red-600 px-7 text-white hover:bg-red-500 sm:w-auto"
           >
             <Play className="size-4 fill-current" />
-            {isPlayerOpen ? "Putar lagi" : "Tonton"}
+            {requiresAuth
+              ? "Buka di Telegram"
+              : isPlayerOpen
+                ? "Putar lagi"
+                : "Tonton"}
           </Button>
         </div>
         <MovieActionButtons
+          authUrl={authMiniAppUrl || authBotChatUrl}
           initialSaved={initialSaved}
           movieId={movieId}
+          requiresAuth={requiresAuth}
           shareText={shareText}
           shareUrl={shareUrl}
           telegramShareUrl={telegramShareUrl}

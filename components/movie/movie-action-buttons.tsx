@@ -12,6 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 
 type MovieActionButtonsProps = {
+  authUrl?: string | null;
   initialSaved?: boolean;
   movieId: string;
   shareText?: string;
@@ -19,11 +20,14 @@ type MovieActionButtonsProps = {
   telegramShareUrl?: string | null;
   title: string;
   className?: string;
+  requiresAuth?: boolean;
 };
 
 export function MovieActionButtons({
+  authUrl,
   initialSaved = false,
   movieId,
+  requiresAuth = false,
   shareText,
   shareUrl,
   telegramShareUrl,
@@ -40,6 +44,11 @@ export function MovieActionButtons({
   }, [initialSaved]);
 
   async function toggleSave() {
+    if (requiresAuth) {
+      window.location.href = authUrl || "/admin/login";
+      return;
+    }
+
     const nextSaved = !isSaved;
 
     setIsSaving(true);
@@ -78,14 +87,14 @@ export function MovieActionButtons({
   }
 
   async function shareMovie() {
-    const url = shareUrl || window.location.href;
+    const url = shareUrl || telegramShareUrl || window.location.href;
     const text = shareText || `Tonton ${title} di Layar BoxOffice`;
 
     try {
-      if (isTelegramMiniAppBrowser() && telegramShareUrl) {
+      if (isTelegramMiniAppBrowser()) {
         openTelegramShareComposer({
           text,
-          url: telegramShareUrl,
+          url,
         });
       } else if (navigator.share) {
         await navigator.share({
@@ -125,9 +134,7 @@ export function MovieActionButtons({
         className="h-12 border border-white/10 bg-white/10 px-4 text-white hover:bg-white/15"
       >
         <Share2 className="size-4" />
-        {isTelegramMiniAppBrowser() && telegramShareUrl
-          ? "Bagikan Telegram"
-          : shareLabel}
+        {isTelegramMiniAppBrowser() ? "Bagikan Telegram" : shareLabel}
       </Button>
     </div>
   );

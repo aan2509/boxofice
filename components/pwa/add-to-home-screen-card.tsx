@@ -102,7 +102,7 @@ export function AddToHomeScreenCard() {
 
       if (status === "missed") {
         setFeedback(
-          "Prompt belum diambil. Tekan lagi dan pilih Tambahkan ke layar utama.",
+          "Tambahkan ke layar utama.",
         );
         return;
       }
@@ -186,8 +186,7 @@ export function AddToHomeScreenCard() {
         Tambahkan ke homescreen
       </p>
       <p className="mt-2 text-sm leading-6 text-neutral-300">
-        Pasang Layar BoxOffice ke layar utama supaya buka app terasa lebih cepat
-        dan lebih mirip native app.
+        Pasang Layar BoxOffice ke layar utama.
       </p>
       <Button
         type="button"

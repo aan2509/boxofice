@@ -8,7 +8,6 @@ import { DetailWatchActions } from "@/components/movie/detail-watch-actions";
 import { MovieCardLink } from "@/components/movie/movie-card-link";
 import { SynopsisAccordion } from "@/components/movie/synopsis-accordion";
 import { Badge } from "@/components/ui/badge";
-import { TelegramEntryGate } from "@/components/telegram/telegram-entry-gate";
 import { ensureAffiliateProfileWithCode } from "@/lib/affiliate";
 import {
   getMovieDetailData,
@@ -16,16 +15,19 @@ import {
   type MovieCard,
 } from "@/lib/movie-feeds";
 import { prisma } from "@/lib/prisma";
-import { getEnvPublicAppUrl } from "@/lib/telegram-bot-settings";
+import {
+  getEnvPublicAppUrl,
+  getTelegramBotSettingsSafe,
+} from "@/lib/telegram-bot-settings";
 import { getPreferredTelegramShareLinksForUser } from "@/lib/telegram-partner-bots";
 import {
   buildTelegramAppStartParam,
   buildTelegramBotChatUrlForUsername,
   buildTelegramMiniAppUrlForConfig,
+  extractAffiliateCodeFromStartParam,
 } from "@/lib/telegram-miniapp";
 import { getCurrentUserSession } from "@/lib/user-auth";
 import { getVipProgramSettingsSafe, getVipStatus } from "@/lib/vip";
-import { getTelegramBotSettingsSafe } from "@/lib/telegram-bot-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +37,10 @@ type MoviePageProps = {
   }>;
   searchParams: Promise<{
     play?: string;
+    ref?: string;
+    start_param?: string;
+    startapp?: string;
+    tgWebAppStartParam?: string;
   }>;
 };
 
@@ -191,36 +197,27 @@ export default async function MoviePage({ params, searchParams }: MoviePageProps
   if (!movie) {
     notFound();
   }
-
-  if (!user) {
-    const telegram = await getTelegramBotSettingsSafe();
-    const startParam = buildTelegramAppStartParam({ movieId: movie.id });
-
-    return (
-      <TelegramEntryGate
-        adminLoginUrl="/admin/login"
-        botChatUrl={buildTelegramBotChatUrlForUsername(
-          telegram.runtime.botUsername,
-          startParam,
-        )}
-        miniAppUrl={buildTelegramMiniAppUrlForConfig(telegram.runtime, startParam)}
-        successRedirectPath={`/movie/${movie.id}`}
-      />
-    );
-  }
-
-  const [favorite, relatedMovies] = await Promise.all([
-    prisma.userFavorite.findUnique({
-      where: {
-        userId_movieId: {
-          movieId: movie.id,
-          userId: user.id,
-        },
-      },
-      select: {
-        id: true,
-      },
-    }),
+  const incomingReferralCode = extractAffiliateCodeFromStartParam(
+    query.ref ??
+      query.start_param ??
+      query.startapp ??
+      query.tgWebAppStartParam ??
+      null,
+  );
+  const [favorite, relatedMovies, telegram] = await Promise.all([
+    user
+      ? prisma.userFavorite.findUnique({
+          where: {
+            userId_movieId: {
+              movieId: movie.id,
+              userId: user.id,
+            },
+          },
+          select: {
+            id: true,
+          },
+        })
+      : Promise.resolve(null),
     getRelatedMovies({
       currentMovieId: movie.id,
       genre: movie.genre,
@@ -229,9 +226,10 @@ export default async function MoviePage({ params, searchParams }: MoviePageProps
       inPopular: movie.inPopular,
       limit: 14,
     }),
+    !user ? getTelegramBotSettingsSafe() : Promise.resolve(null),
   ]);
   const shouldOpenPlayer = query.play === "1" || query.play === "true";
-  const vipStatus = getVipStatus(user);
+  const vipStatus = getVipStatus(user ?? {});
   const vipSettings = vipSettingsResult.settings;
 
   const poster = movie.thumbnail;
@@ -240,11 +238,19 @@ export default async function MoviePage({ params, searchParams }: MoviePageProps
     "Sinopsis belum tersedia. Video akan disiapkan otomatis saat kamu menekan tombol tonton.";
   const shareDescription = buildMovieDescription(movie);
   const releaseDate = formatReleaseDate(movie.releaseDate ?? undefined);
-  const shareUrl = `${getEnvPublicAppUrl()}/movie/${movie.id}`;
-  const affiliateProfile = await ensureAffiliateProfileWithCode({
-    id: user.id,
-    name: user.name,
-  }).catch(() => null);
+  const affiliateProfile = user
+    ? await ensureAffiliateProfileWithCode({
+        id: user.id,
+        name: user.name,
+      }).catch(() => null)
+    : null;
+  const shareReferralCode = affiliateProfile?.referralCode ?? incomingReferralCode;
+  const shareUrl = new URL(`/movie/${movie.id}`, getEnvPublicAppUrl());
+
+  if (shareReferralCode) {
+    shareUrl.searchParams.set("ref", shareReferralCode);
+  }
+
   const telegramShareStartParam = affiliateProfile?.referralCode
     ? buildTelegramAppStartParam({
         movieId: movie.id,
@@ -252,7 +258,7 @@ export default async function MoviePage({ params, searchParams }: MoviePageProps
       })
     : "";
   const telegramShareLinks =
-    telegramShareStartParam && affiliateProfile?.referralCode
+    telegramShareStartParam && affiliateProfile?.referralCode && user
       ? await getPreferredTelegramShareLinksForUser({
           startParam: telegramShareStartParam,
           userId: user.id,
@@ -260,6 +266,16 @@ export default async function MoviePage({ params, searchParams }: MoviePageProps
       : null;
   const telegramShareUrl =
     telegramShareLinks?.miniAppUrl || telegramShareLinks?.chatUrl || null;
+  const authStartParam = buildTelegramAppStartParam({
+    movieId: movie.id,
+    referralCode: incomingReferralCode,
+  });
+  const authBotChatUrl = telegram
+    ? buildTelegramBotChatUrlForUsername(telegram.runtime.botUsername, authStartParam)
+    : null;
+  const authMiniAppUrl = telegram
+    ? buildTelegramMiniAppUrlForConfig(telegram.runtime, authStartParam)
+    : null;
 
   return (
     <main className="min-h-screen bg-black text-white">
@@ -346,12 +362,15 @@ export default async function MoviePage({ params, searchParams }: MoviePageProps
               ) : null}
 
               <DetailWatchActions
+                authBotChatUrl={authBotChatUrl}
+                authMiniAppUrl={authMiniAppUrl}
                 initialSaved={Boolean(favorite)}
-                initialOpen={shouldOpenPlayer}
+                initialOpen={Boolean(user) && shouldOpenPlayer}
                 movieId={movie.id}
                 poster={poster}
+                requiresAuth={!user}
                 shareText={shareDescription}
-                shareUrl={shareUrl}
+                shareUrl={shareUrl.toString()}
                 telegramShareUrl={telegramShareUrl}
                 title={movie.title}
               />

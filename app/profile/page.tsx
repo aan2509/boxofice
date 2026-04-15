@@ -123,7 +123,7 @@ export default async function ProfilePage() {
             {vipStatus.active ? (
               <>
                 <p className="mt-2 text-sm leading-6 text-neutral-200">
-                  Akunmu sedang VIP. Preview otomatis dimatikan dan semua akses penuh tetap aktif sampai masa berlangganan berakhir.
+                  Akunmu Sudah VIP.
                 </p>
                 <div className="mt-4 rounded-[18px] border border-white/10 bg-black/20 p-4">
                   <p className="text-[11px] uppercase tracking-[0.18em] text-neutral-400">
@@ -145,11 +145,7 @@ export default async function ProfilePage() {
             ) : (
               <>
                 <p className="mt-2 text-sm leading-6 text-neutral-200">
-                  Akunmu masih mode gratis. Preview akan berhenti otomatis setelah{" "}
-                  {vipSettings.previewEnabled
-                    ? `${vipSettings.previewLimitMinutes} menit`
-                    : "batas yang diatur admin"}
-                  .
+                  Upgrade ke VIP untuk menonton semua film tanpa batasan.
                 </p>
                 <Button
                   asChild
