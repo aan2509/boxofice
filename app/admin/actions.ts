@@ -65,6 +65,7 @@ function buildAllTargetsParams(
       Awaited<ReturnType<typeof syncMovieFeed>>
     >;
     totalCreated: number;
+    totalDeactivated: number;
     totalDuplicateSkipped: number;
     totalErrors: number;
     totalExisting: number;
@@ -86,6 +87,7 @@ function buildAllTargetsParams(
     sync: syncState,
     target: "all",
     totalCreated: String(summary.totalCreated),
+    totalDeactivated: String(summary.totalDeactivated),
     totalDuplicateSkipped: String(summary.totalDuplicateSkipped),
     totalErrors: String(summary.totalErrors),
     totalExisting: String(summary.totalExisting),
@@ -95,6 +97,7 @@ function buildAllTargetsParams(
     totalUpdated: String(summary.totalUpdated),
     message: home.errors[0] ?? popular.errors[0] ?? latest.errors[0] ?? "",
     homeCreated: String(home.created),
+    homeDeactivated: String(home.deactivated),
     homeExisting: String(home.existing),
     homeFetched: String(home.fetched),
     homeSkippedUnsupported: String(home.skippedUnsupported),
@@ -102,6 +105,7 @@ function buildAllTargetsParams(
     homeUpdated: String(home.updated),
     homeErrors: String(home.errors.length),
     popularCreated: String(popular.created),
+    popularDeactivated: String(popular.deactivated),
     popularExisting: String(popular.existing),
     popularFetched: String(popular.fetched),
     popularSkippedUnsupported: String(popular.skippedUnsupported),
@@ -109,6 +113,7 @@ function buildAllTargetsParams(
     popularUpdated: String(popular.updated),
     popularErrors: String(popular.errors.length),
     newCreated: String(latest.created),
+    newDeactivated: String(latest.deactivated),
     newExisting: String(latest.existing),
     newFetched: String(latest.fetched),
     newSkippedUnsupported: String(latest.skippedUnsupported),
@@ -132,6 +137,8 @@ async function syncAllFeedsForPage(page: number) {
       popular,
     },
     totalCreated: home.created + popular.created + latest.created,
+    totalDeactivated:
+      home.deactivated + popular.deactivated + latest.deactivated,
     totalDuplicateSkipped:
       home.duplicateSkipped +
       popular.duplicateSkipped +

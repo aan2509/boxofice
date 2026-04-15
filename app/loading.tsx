@@ -42,24 +42,26 @@ export default function Loading() {
         </div>
       </header>
 
-      <div className="pt-[182px] sm:pt-[188px]">
-        {Array.from({ length: 3 }).map((_, sectionIndex) => (
-          <section
-            key={sectionIndex}
-            className="mx-auto w-full max-w-7xl px-4 py-2 sm:px-8 sm:py-3 lg:px-10"
-          >
-            <Skeleton className="mb-3 h-7 w-40 bg-white/10" />
-            <div className="-mx-4 flex gap-3 overflow-hidden px-4 pb-3 sm:mx-0 sm:px-0">
-              {Array.from({ length: 6 }).map((_, index) => (
-                <div key={index} className="w-[132px] shrink-0 sm:w-[180px]">
-                  <Skeleton className="aspect-[2/3] w-full bg-white/10" />
-                  <Skeleton className="mt-3 h-4 w-11/12 bg-white/10" />
-                  <Skeleton className="mt-2 h-3 w-7/12 bg-white/10" />
-                </div>
-              ))}
+      <div className="pt-[232px] sm:pt-[240px]">
+        <section className="mx-auto w-full max-w-7xl px-4 pb-28 pt-4 sm:px-8 sm:pb-10 sm:pt-6 lg:px-10">
+          <div className="mb-4 flex items-end justify-between gap-3">
+            <div>
+              <Skeleton className="h-3 w-16 bg-white/10" />
+              <Skeleton className="mt-2 h-8 w-40 bg-white/10" />
             </div>
-          </section>
-        ))}
+            <Skeleton className="h-4 w-16 bg-white/10" />
+          </div>
+
+          <div className="grid grid-cols-3 gap-x-3 gap-y-2 sm:grid-cols-4 sm:gap-x-4 sm:gap-y-4 lg:grid-cols-6">
+            {Array.from({ length: 12 }).map((_, index) => (
+              <div key={index}>
+                <Skeleton className="aspect-[2/3] w-full bg-white/10" />
+                <Skeleton className="mt-3 h-4 w-11/12 bg-white/10" />
+                <Skeleton className="mt-2 h-3 w-7/12 bg-white/10" />
+              </div>
+            ))}
+          </div>
+        </section>
       </div>
     </main>
   );

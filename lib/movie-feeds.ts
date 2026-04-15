@@ -54,6 +54,12 @@ export type HomepageFilterOptions = {
   years: string[];
 };
 
+export type CatalogPage = {
+  items: MovieCard[];
+  nextOffset: number | null;
+  totalMovies: number;
+};
+
 type FeedDefinition = {
   slug: FeedSlug;
   title: string;
@@ -102,6 +108,32 @@ function normalizeFilterValue(value?: string | null) {
 
   return normalized ? normalized : null;
 }
+
+function getCatalogWhere(filters: HomepageFilters = {}): Prisma.MovieWhereInput {
+  const genre = normalizeFilterValue(filters.genre);
+  const year = normalizeFilterValue(filters.year);
+
+  return {
+    OR: [{ inHome: true }, { inPopular: true }, { inNew: true }],
+    ...(genre
+      ? {
+          genre: {
+            contains: genre,
+            mode: "insensitive",
+          },
+        }
+      : {}),
+    ...(year ? { year } : {}),
+  };
+}
+
+const CATALOG_ORDER_BY = [
+  { inPopular: "desc" as const },
+  { inNew: "desc" as const },
+  { inHome: "desc" as const },
+  { updatedAt: "desc" as const },
+  { id: "desc" as const },
+];
 
 function getFeedWhere(
   slug: FeedSlug,
@@ -213,6 +245,65 @@ export async function getFeedPageData(slug: FeedSlug) {
       count: 0,
       definition: FEED_DEFINITIONS[slug],
       movies: [],
+    };
+  }
+}
+
+const getCatalogPageCached = unstable_cache(
+  async (
+    offset: number,
+    limit: number,
+    genre?: string | null,
+    year?: string | null,
+  ): Promise<CatalogPage> => {
+    const where = getCatalogWhere({ genre, year });
+    const [totalMovies, items] = await Promise.all([
+      prisma.movie.count({ where }),
+      prisma.movie.findMany({
+        where,
+        orderBy: CATALOG_ORDER_BY,
+        skip: offset,
+        take: limit,
+        select: {
+          id: true,
+          quality: true,
+          rating: true,
+          thumbnail: true,
+          title: true,
+        },
+      }),
+    ]);
+
+    return {
+      items,
+      nextOffset: offset + items.length < totalMovies ? offset + items.length : null,
+      totalMovies,
+    };
+  },
+  ["catalog-page-data"],
+  { revalidate: FEED_REVALIDATE_SECONDS },
+);
+
+export async function getCatalogPage(
+  options: HomepageFilters & {
+    limit?: number;
+    offset?: number;
+  } = {},
+): Promise<CatalogPage> {
+  const limit = Math.max(1, Math.min(options.limit ?? 18, 30));
+  const offset = Math.max(0, options.offset ?? 0);
+  const genre = normalizeFilterValue(options.genre);
+  const year = normalizeFilterValue(options.year);
+
+  try {
+    return await getCatalogPageCached(offset, limit, genre, year);
+  } catch (error) {
+    console.error("Failed to load catalog page", error);
+
+    return {
+      items: [],
+      nextOffset: null,
+      totalMovies: 0,
     };
   }
 }

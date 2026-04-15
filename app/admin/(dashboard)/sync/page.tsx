@@ -48,6 +48,7 @@ type AdminSyncPageProps = {
     existing?: string;
     fetched?: string;
     message?: string;
+    newDeactivated?: string;
     newCreated?: string;
     newErrors?: string;
     newExisting?: string;
@@ -57,6 +58,7 @@ type AdminSyncPageProps = {
     newUpdated?: string;
     page?: string;
     pages?: string;
+    popularDeactivated?: string;
     popularCreated?: string;
     popularErrors?: string;
     popularExisting?: string;
@@ -71,6 +73,7 @@ type AdminSyncPageProps = {
     titleCleanup?: string;
     titleScanned?: string;
     titleUnchanged?: string;
+    totalDeactivated?: string;
     totalCreated?: string;
     totalDuplicateSkipped?: string;
     totalErrors?: string;
@@ -82,6 +85,8 @@ type AdminSyncPageProps = {
     unchanged?: string;
     updated?: string;
     upserted?: string;
+    deactivated?: string;
+    homeDeactivated?: string;
     homeCreated?: string;
     homeErrors?: string;
     homeExisting?: string;
@@ -102,6 +107,7 @@ const FEED_BUTTONS = [
 function FeedReportRow({
   label,
   created,
+  deactivated,
   existing,
   updated,
   unchanged,
@@ -111,6 +117,7 @@ function FeedReportRow({
 }: {
   label: string;
   created?: string;
+  deactivated?: string;
   existing?: string;
   updated?: string;
   unchanged?: string;
@@ -128,6 +135,7 @@ function FeedReportRow({
         <strong>{unchanged ?? "0"}</strong>
       </p>
       <p className="text-xs leading-6 text-neutral-400">
+        Disembunyikan: {deactivated ?? "0"} ·{" "}
         Fetched: {fetched ?? "0"} · Unsupported:{" "}
         {skippedUnsupported ?? "0"} · Error: {errors ?? "0"}
       </p>
@@ -193,7 +201,7 @@ function SyncResultBanner({
               {params.message ?? "upstream tidak merespons"}
             </p>
           ) : null}
-          <div className="grid gap-2 lg:grid-cols-4">
+          <div className="grid gap-2 lg:grid-cols-5">
             <span className="rounded-md bg-black/30 px-3 py-2">
               Total judul baru: <strong>{params.totalCreated ?? "0"}</strong>
             </span>
@@ -204,6 +212,10 @@ function SyncResultBanner({
               Total update: <strong>{params.totalUpdated ?? "0"}</strong>
             </span>
             <span className="rounded-md bg-black/30 px-3 py-2">
+              Total disembunyikan:{" "}
+              <strong>{params.totalDeactivated ?? "0"}</strong>
+            </span>
+            <span className="rounded-md bg-black/30 px-3 py-2">
               Total tanpa perubahan:{" "}
               <strong>{params.totalUnchanged ?? "0"}</strong>
             </span>
@@ -212,6 +224,7 @@ function SyncResultBanner({
             <FeedReportRow
               label="Sync home"
               created={params.homeCreated}
+              deactivated={params.homeDeactivated}
               existing={params.homeExisting}
               updated={params.homeUpdated}
               unchanged={params.homeUnchanged}
@@ -222,6 +235,7 @@ function SyncResultBanner({
             <FeedReportRow
               label="Sync populer"
               created={params.popularCreated}
+              deactivated={params.popularDeactivated}
               existing={params.popularExisting}
               updated={params.popularUpdated}
               unchanged={params.popularUnchanged}
@@ -232,6 +246,7 @@ function SyncResultBanner({
             <FeedReportRow
               label="Sync new"
               created={params.newCreated}
+              deactivated={params.newDeactivated}
               existing={params.newExisting}
               updated={params.newUpdated}
               unchanged={params.newUnchanged}
@@ -248,7 +263,7 @@ function SyncResultBanner({
             {params.page ?? params.pages ?? DEFAULT_SYNC_PAGE}{" "}
             {params.sync === "partial" ? "selesai sebagian." : "selesai."}
           </p>
-          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-5">
             <span className="rounded-md bg-black/30 px-3 py-2">
               Judul baru: <strong>{params.created ?? "0"}</strong>
             </span>
@@ -257,6 +272,9 @@ function SyncResultBanner({
             </span>
             <span className="rounded-md bg-black/30 px-3 py-2">
               Diperbarui: <strong>{params.updated ?? "0"}</strong>
+            </span>
+            <span className="rounded-md bg-black/30 px-3 py-2">
+              Disembunyikan: <strong>{params.deactivated ?? "0"}</strong>
             </span>
             <span className="rounded-md bg-black/30 px-3 py-2">
               Tanpa perubahan: <strong>{params.unchanged ?? "0"}</strong>

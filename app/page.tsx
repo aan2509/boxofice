@@ -1,12 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
 
-import { MovieCardLink } from "@/components/movie/movie-card-link";
+import { HomeCatalog } from "@/components/movie/home-catalog";
 import { TelegramEntryGate } from "@/components/telegram/telegram-entry-gate";
 import {
+  getCatalogPage,
   getHomepageFilterOptions,
-  getHomepageMovieData,
   type HomepageFilters,
 } from "@/lib/movie-feeds";
 import { getTelegramBotSettingsSafe } from "@/lib/telegram-bot-settings";
@@ -87,51 +86,6 @@ function FilterChip({
   );
 }
 
-function MovieRail({
-  href,
-  movies,
-  title,
-}: {
-  href: string;
-  movies: Awaited<ReturnType<typeof getHomepageMovieData>>["homeMovies"];
-  title: string;
-}) {
-  if (!movies.length) {
-    return null;
-  }
-
-  return (
-    <section className="mx-auto w-full max-w-7xl px-4 py-2 sm:px-8 sm:py-3 lg:px-10">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 className="text-xl font-bold text-white sm:text-2xl">{title}</h2>
-      </div>
-
-      <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-3 [scrollbar-width:none] sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden">
-        {movies.map((movie) => (
-          <MovieCardLink
-            key={movie.id}
-            movie={movie}
-            className="w-[132px] shrink-0 sm:w-[180px] sm:hover:-translate-y-1"
-          />
-        ))}
-        <Link
-          href={href}
-          prefetch
-          data-haptic="light"
-          className="flex aspect-[2/3] w-[132px] shrink-0 flex-col items-center justify-center rounded-md border border-white/10 bg-white/[0.05] p-4 text-center outline-none transition-colors active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-red-300 hover:bg-white/[0.09] sm:w-[180px]"
-        >
-          <span className="flex size-11 items-center justify-center rounded-md bg-red-600/15 text-red-300 ring-1 ring-red-400/20">
-            <ArrowRight className="size-5" />
-          </span>
-          <span className="mt-4 text-sm font-semibold text-white sm:text-base">
-            Lihat semua
-          </span>
-        </Link>
-      </div>
-    </section>
-  );
-}
-
 export default async function Home({ searchParams }: HomePageProps) {
   const [{ genre, year }, user] = await Promise.all([
     searchParams,
@@ -156,15 +110,15 @@ export default async function Home({ searchParams }: HomePageProps) {
 
   const selectedGenre = normalizeQueryValue(genre);
   const selectedYear = normalizeQueryValue(year);
-  const [filters, { homeMovies, popularMovies, newMovies }] =
-    await Promise.all([
-      getHomepageFilterOptions(),
-      getHomepageMovieData({
-        genre: selectedGenre,
-        limit: 18,
-        year: selectedYear,
-      }),
-    ]);
+  const [filters, catalog] = await Promise.all([
+    getHomepageFilterOptions(),
+    getCatalogPage({
+      genre: selectedGenre,
+      limit: 18,
+      offset: 0,
+      year: selectedYear,
+    }),
+  ]);
   const currentFilters = {
     genre: selectedGenre,
     year: selectedYear,
@@ -209,7 +163,6 @@ export default async function Home({ searchParams }: HomePageProps) {
             </div>
           </div>
 
-
           <div className="mt-4 space-y-3">
             <div>
               <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.18em] text-neutral-500">
@@ -233,39 +186,40 @@ export default async function Home({ searchParams }: HomePageProps) {
                 ))}
               </div>
             </div>
+
+            <div>
+              <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.18em] text-neutral-500">
+                Tahun
+              </div>
+              <div className="-mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden">
+                <FilterChip
+                  active={!selectedYear}
+                  href={buildFilterHref(currentFilters, { year: null })}
+                  label="Semua"
+                />
+                {filters.years.map((yearOption) => (
+                  <FilterChip
+                    key={yearOption}
+                    active={selectedYear === yearOption}
+                    href={buildFilterHref(currentFilters, {
+                      year: yearOption,
+                    })}
+                    label={yearOption}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </header>
 
-      <div className="pt-[182px] sm:pt-[188px]">
-        <MovieRail
-          href="/browse/home"
-          title="Pilihan Untukmu"
-          movies={homeMovies}
+      <div className="pt-[232px] sm:pt-[240px]">
+        <HomeCatalog
+          filters={currentFilters}
+          initialMovies={catalog.items}
+          initialNextOffset={catalog.nextOffset}
+          totalMovies={catalog.totalMovies}
         />
-        <MovieRail
-          href="/browse/populer"
-          title="Sedang populer"
-          movies={popularMovies}
-        />
-        <MovieRail
-          href="/browse/new"
-          title="Rilis terbaru"
-          movies={newMovies}
-        />
-
-        {!homeMovies.length && !popularMovies.length && !newMovies.length ? (
-          <section className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-8 lg:px-10">
-            <div className="flex min-h-[280px] flex-col items-center justify-center rounded-md border border-dashed border-white/15 bg-neutral-900/60 px-6 text-center">
-              <p className="text-2xl font-semibold text-white">
-                Belum ada film yang cocok
-              </p>
-              <p className="mt-3 max-w-md text-sm leading-6 text-neutral-400">
-                Coba ganti genre atau tahun agar katalog yang tampil lebih luas.
-              </p>
-            </div>
-          </section>
-        ) : null}
       </div>
     </main>
   );
