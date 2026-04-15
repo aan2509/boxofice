@@ -33,6 +33,10 @@ export function DetailWatchActions({
     initialOpen ? 1 : 0,
   );
 
+  const closePlayer = React.useCallback(() => {
+    setIsPlayerOpen(false);
+  }, []);
+
   React.useEffect(() => {
     if (initialOpen) {
       setIsPlayerOpen(true);
@@ -125,6 +129,7 @@ export function DetailWatchActions({
             defaultQuality="480p"
             immersiveRequestId={immersiveRequestId}
             movieId={movieId}
+            onRequestClose={closePlayer}
             poster={poster}
           />
         </div>

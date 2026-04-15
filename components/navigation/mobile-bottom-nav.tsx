@@ -87,15 +87,15 @@ export function MobileBottomNav() {
     return null;
   }
 
+  if (isImmersivePlayerOpen) {
+    return null;
+  }
+
   return (
     <>
       <div className="h-20 sm:hidden" />
       <nav
-        className={cn(
-          "fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[linear-gradient(180deg,rgba(25,18,18,0.96),rgba(8,8,8,0.98))] pb-[calc(env(safe-area-inset-bottom)+6px)] pt-1.5 shadow-[0_-10px_40px_rgba(0,0,0,0.4)] backdrop-blur transition-all duration-200 sm:hidden",
-          isImmersivePlayerOpen &&
-            "pointer-events-none translate-y-full opacity-0",
-        )}
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[linear-gradient(180deg,rgba(25,18,18,0.96),rgba(8,8,8,0.98))] pb-[calc(env(safe-area-inset-bottom)+6px)] pt-1.5 shadow-[0_-10px_40px_rgba(0,0,0,0.4)] backdrop-blur transition-all duration-200 sm:hidden"
       >
         <div className="pointer-events-none absolute inset-x-0 top-0 h-5 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0))]" />
         <div className="mx-auto grid max-w-xl grid-cols-5 items-end gap-0.5 px-2">

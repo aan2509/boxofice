@@ -21,6 +21,7 @@ type WatchPlayerProps = {
   immersiveRequestId?: number;
   initialProgressSeconds?: number;
   movieId?: string;
+  onRequestClose?: () => void;
   poster?: string | null;
   sourceUrl?: string;
 };
@@ -151,6 +152,7 @@ export function WatchPlayer({
   immersiveRequestId = 0,
   initialProgressSeconds = 0,
   movieId,
+  onRequestClose,
   poster,
   sourceUrl,
 }: WatchPlayerProps) {
@@ -192,6 +194,10 @@ export function WatchPlayer({
   const [isPortraitViewport, setIsPortraitViewport] = React.useState(false);
   const [showChrome, setShowChrome] = React.useState(true);
   const [retryCount, setRetryCount] = React.useState(0);
+
+  const requestClose = React.useCallback(() => {
+    onRequestClose?.();
+  }, [onRequestClose]);
 
   React.useEffect(() => {
     const controller = new AbortController();
@@ -314,14 +320,19 @@ export function WatchPlayer({
     unlockOrientationIfPossible();
   }, [revealChrome]);
 
+  const closePlayer = React.useCallback(() => {
+    void exitImmersive();
+    requestClose();
+  }, [exitImmersive, requestClose]);
+
   const toggleFullscreen = React.useCallback(() => {
     if (isImmersive) {
-      void exitImmersive();
+      closePlayer();
       return;
     }
 
     void enterImmersive();
-  }, [enterImmersive, exitImmersive, isImmersive]);
+  }, [closePlayer, enterImmersive, isImmersive]);
 
   const moveToNextPlayableSource = React.useCallback(
     (failedUrl: string) => {
@@ -740,7 +751,7 @@ export function WatchPlayer({
       }
 
       event.preventDefault();
-      void exitImmersive();
+      closePlayer();
     }
 
     window.addEventListener("keydown", handleKeyDown);
@@ -748,11 +759,11 @@ export function WatchPlayer({
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [exitImmersive, isImmersive]);
+  }, [closePlayer, isImmersive]);
 
   React.useEffect(() => {
     function handleImmersiveBack() {
-      void exitImmersive();
+      closePlayer();
     }
 
     window.addEventListener(
@@ -766,7 +777,7 @@ export function WatchPlayer({
         handleImmersiveBack as EventListener,
       );
     };
-  }, [exitImmersive]);
+  }, [closePlayer]);
 
   function seekBy(seconds: number) {
     const video = videoRef.current;
@@ -922,14 +933,15 @@ export function WatchPlayer({
       onTouchEnd={handleTouchEnd}
       className={cn(
         "relative aspect-video overflow-hidden bg-black ring-1 ring-white/10 sm:rounded-md",
-        isImmersive && "fixed inset-0 z-[90] aspect-auto rounded-none bg-black ring-0",
+        isImmersive &&
+          "fixed inset-0 z-[90] h-[100dvh] w-screen overflow-hidden rounded-none bg-black ring-0",
       )}
     >
       <div
         className={cn(
           "relative flex h-full w-full items-center justify-center bg-black",
           shouldRotateImmersive &&
-            "absolute left-1/2 top-1/2 h-[100vw] w-[100dvh] -translate-x-1/2 -translate-y-1/2 rotate-90",
+            "absolute left-1/2 top-1/2 h-[100vw] w-[100dvh] -translate-x-1/2 -translate-y-1/2 rotate-90 transform-gpu",
         )}
       >
         <video
@@ -952,7 +964,7 @@ export function WatchPlayer({
             {isImmersive ? (
               <button
                 type="button"
-                onClick={() => void exitImmersive()}
+                onClick={closePlayer}
                 data-haptic="medium"
                 className="inline-flex h-11 items-center gap-2 rounded-full border border-white/10 bg-black/65 px-4 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(0,0,0,0.38)] backdrop-blur"
               >
