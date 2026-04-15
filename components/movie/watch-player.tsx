@@ -49,29 +49,6 @@ type VideoElementWithFastSeek = HTMLVideoElement & {
   webkitSupportsFullscreen?: boolean;
 };
 
-type TelegramWebApp = {
-  exitFullscreen?: () => void;
-  expand?: () => void;
-  isFullscreen?: boolean;
-  isVersionAtLeast?: (version: string) => boolean;
-  offEvent?: (
-    event: "fullscreenChanged" | "fullscreenFailed",
-    callback: (payload?: unknown) => void,
-  ) => void;
-  onEvent?: (
-    event: "fullscreenChanged" | "fullscreenFailed",
-    callback: (payload?: unknown) => void,
-  ) => void;
-  requestFullscreen?: () => void;
-  setHeaderColor?: (color: string) => void;
-};
-
-type TelegramWindow = Window & {
-  Telegram?: {
-    WebApp?: TelegramWebApp;
-  };
-};
-
 function isHlsSource(source: CachedStreamSource) {
   return (
     source.type === "application/x-mpegURL" ||
@@ -132,14 +109,6 @@ function unlockOrientationIfPossible() {
   screen.orientation?.unlock?.();
 }
 
-function getTelegramWebApp() {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  return (window as TelegramWindow).Telegram?.WebApp ?? null;
-}
-
 export function WatchPlayer({
   autoPlay = false,
   defaultQuality,
@@ -180,8 +149,8 @@ export function WatchPlayer({
     null,
   );
   const [failedSourceUrls, setFailedSourceUrls] = React.useState<string[]>([]);
-  const [isBrowserFullscreen, setIsBrowserFullscreen] = React.useState(false);
-  const [isTelegramFullscreen, setIsTelegramFullscreen] = React.useState(false);
+  const [isImmersive, setIsImmersive] = React.useState(false);
+  const [isPortraitViewport, setIsPortraitViewport] = React.useState(false);
   const [retryCount, setRetryCount] = React.useState(0);
 
   React.useEffect(() => {
@@ -554,67 +523,39 @@ export function WatchPlayer({
   }, [movieId, sources.length]);
 
   React.useEffect(() => {
-    const telegram = getTelegramWebApp();
-
-    if (!telegram?.onEvent) {
-      return;
-    }
-
-    function handleFullscreenChanged(payload?: unknown) {
-      const isFullscreen =
-        typeof payload === "object" &&
-        payload !== null &&
-        "is_fullscreen" in payload
-          ? Boolean(
-              (payload as {
-                is_fullscreen?: boolean;
-              }).is_fullscreen,
-            )
-          : Boolean(telegram?.isFullscreen);
-
-      setIsTelegramFullscreen(isFullscreen);
-
-      if (isFullscreen) {
-        void lockLandscapeIfPossible();
+    function handleViewportChange() {
+      if (typeof window === "undefined") {
         return;
       }
 
-      unlockOrientationIfPossible();
+      setIsPortraitViewport(window.matchMedia("(orientation: portrait)").matches);
     }
 
-    function handleFullscreenFailed() {
-      setIsTelegramFullscreen(Boolean(telegram?.isFullscreen));
-    }
-
-    telegram.onEvent("fullscreenChanged", handleFullscreenChanged);
-    telegram.onEvent("fullscreenFailed", handleFullscreenFailed);
-    setIsTelegramFullscreen(Boolean(telegram.isFullscreen));
+    handleViewportChange();
+    window.addEventListener("resize", handleViewportChange);
+    window.addEventListener("orientationchange", handleViewportChange);
 
     return () => {
-      telegram.offEvent?.("fullscreenChanged", handleFullscreenChanged);
-      telegram.offEvent?.("fullscreenFailed", handleFullscreenFailed);
+      window.removeEventListener("resize", handleViewportChange);
+      window.removeEventListener("orientationchange", handleViewportChange);
     };
   }, []);
 
   React.useEffect(() => {
-    function handleFullscreenChange() {
-      if (document.fullscreenElement === videoRef.current) {
-        setIsBrowserFullscreen(true);
-        void lockLandscapeIfPossible();
-        return;
-      }
-
-      setIsBrowserFullscreen(false);
+    if (!isImmersive) {
+      document.body.style.overflow = "";
       unlockOrientationIfPossible();
+      return;
     }
 
-    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    document.body.style.overflow = "hidden";
+    void lockLandscapeIfPossible();
 
     return () => {
-      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      document.body.style.overflow = "";
       unlockOrientationIfPossible();
     };
-  }, []);
+  }, [isImmersive]);
 
   React.useEffect(() => {
     if (!seekFeedback) {
@@ -705,53 +646,11 @@ export function WatchPlayer({
     setSelectedSourceUrl(source.url);
   }
 
-  async function toggleFullscreen() {
-    const video = videoRef.current;
-    const telegram = getTelegramWebApp();
-
-    if (telegram?.requestFullscreen && telegram.isVersionAtLeast?.("8.0")) {
-      telegram.setHeaderColor?.("#000000");
-
-      if (telegram.isFullscreen) {
-        telegram.exitFullscreen?.();
-        setIsTelegramFullscreen(false);
-        unlockOrientationIfPossible();
-        return;
-      }
-
-      telegram.requestFullscreen();
-      telegram.expand?.();
-      setIsTelegramFullscreen(true);
-      await lockLandscapeIfPossible();
-      return;
-    }
-
-    if (!video) {
-      return;
-    }
-
-    const fullscreenCapableVideo = video as VideoElementWithFastSeek;
-
-    if (document.fullscreenElement === video) {
-      await document.exitFullscreen?.().catch(() => undefined);
-      unlockOrientationIfPossible();
-      return;
-    }
-
-    if (typeof video.requestFullscreen === "function") {
-      await video.requestFullscreen().catch(() => undefined);
-      await lockLandscapeIfPossible();
-      return;
-    }
-
-    if (
-      typeof fullscreenCapableVideo.webkitEnterFullscreen === "function" &&
-      fullscreenCapableVideo.webkitSupportsFullscreen
-    ) {
-      fullscreenCapableVideo.webkitEnterFullscreen();
-      await lockLandscapeIfPossible();
-    }
+  function toggleFullscreen() {
+    setIsImmersive((current) => !current);
   }
+
+  const shouldRotateImmersive = isImmersive && isPortraitViewport;
 
   if (!stream && !error) {
     return (
@@ -820,68 +719,83 @@ export function WatchPlayer({
     <div
       onDoubleClick={handleDoubleClick}
       onTouchEnd={handleTouchEnd}
-      className="relative aspect-video overflow-hidden bg-black ring-1 ring-white/10 sm:rounded-md"
+      className={cn(
+        "relative aspect-video overflow-hidden bg-black ring-1 ring-white/10 sm:rounded-md",
+        isImmersive && "fixed inset-0 z-[80] aspect-auto rounded-none ring-0",
+      )}
     >
-      <video
-        ref={videoRef}
-        className="h-full w-full bg-black"
-        poster={poster ?? undefined}
-        playsInline
-        controls
-      />
-      {sources.length > 1 ? (
-        <div className="absolute right-2 top-2 z-20 flex max-w-[calc(100%-1rem)] gap-1 overflow-x-auto rounded-md bg-black/65 p-1 backdrop-blur">
-          {sources.map((source) => (
-            <button
-              key={source.url}
-              type="button"
-              onClick={() => selectSource(source)}
-              className={cn(
-                "shrink-0 rounded-md border px-2.5 py-1 text-xs font-semibold transition-colors sm:px-3 sm:py-1.5 sm:text-sm",
-                source.url === selectedSource?.url
-                  ? "border-white bg-white text-neutral-950"
-                  : "border-white/15 bg-neutral-900 text-neutral-100 hover:bg-neutral-800",
-              )}
-            >
-              {source.label}
-            </button>
-          ))}
-        </div>
-      ) : null}
-      <div className="absolute bottom-2 right-2 z-20">
-        <button
-          type="button"
-          onClick={() => void toggleFullscreen()}
-          data-haptic="medium"
-          className="inline-flex h-10 items-center gap-2 rounded-md border border-white/10 bg-black/65 px-3 text-xs font-semibold text-white backdrop-blur transition-colors hover:bg-black/80"
-        >
-          {isTelegramFullscreen || isBrowserFullscreen ? (
-            <Minimize className="size-4" />
-          ) : (
-            <Expand className="size-4" />
-          )}
-          <span className="hidden sm:inline">Layar penuh</span>
-        </button>
-      </div>
-      {seekFeedback ? (
-        <div
-          key={seekFeedback.key}
-          className={cn(
-            "pointer-events-none absolute inset-y-0 flex w-1/2 items-center justify-center bg-black/15 text-white",
-            seekFeedback.direction === "backward" ? "left-0" : "right-0",
-          )}
-        >
-          <div className="flex size-20 animate-ping items-center justify-center rounded-full bg-white/10" />
-          <div className="absolute flex items-center gap-2 rounded-full bg-black/55 px-4 py-2 text-sm font-semibold backdrop-blur">
-            {seekFeedback.direction === "backward" ? (
-              <RotateCcw className="size-5" />
-            ) : (
-              <RotateCw className="size-5" />
-            )}
-            {seekFeedback.direction === "backward" ? "-10 detik" : "+10 detik"}
+      <div
+        className={cn(
+          "relative h-full w-full",
+          isImmersive && "bg-black",
+          shouldRotateImmersive &&
+            "absolute left-1/2 top-1/2 h-[100vw] w-[100dvh] -translate-x-1/2 -translate-y-1/2 rotate-90",
+        )}
+      >
+        <video
+          ref={videoRef}
+          className="h-full w-full bg-black"
+          poster={poster ?? undefined}
+          playsInline
+          controls
+        />
+        {sources.length > 1 ? (
+          <div className="absolute right-2 top-2 z-20 flex max-w-[calc(100%-1rem)] gap-1 overflow-x-auto rounded-md bg-black/65 p-1 backdrop-blur">
+            {sources.map((source) => (
+              <button
+                key={source.url}
+                type="button"
+                onClick={() => selectSource(source)}
+                data-haptic="light"
+                className={cn(
+                  "shrink-0 rounded-md border px-2.5 py-1 text-xs font-semibold transition-colors sm:px-3 sm:py-1.5 sm:text-sm",
+                  source.url === selectedSource?.url
+                    ? "border-white bg-white text-neutral-950"
+                    : "border-white/15 bg-neutral-900 text-neutral-100 hover:bg-neutral-800",
+                )}
+              >
+                {source.label}
+              </button>
+            ))}
           </div>
+        ) : null}
+        <div className="absolute bottom-2 right-2 z-20">
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            data-haptic="medium"
+            className="inline-flex h-10 items-center gap-2 rounded-md border border-white/10 bg-black/65 px-3 text-xs font-semibold text-white backdrop-blur transition-colors hover:bg-black/80"
+          >
+            {isImmersive ? (
+              <Minimize className="size-4" />
+            ) : (
+              <Expand className="size-4" />
+            )}
+            <span className="hidden sm:inline">
+              {isImmersive ? "Tutup layar penuh" : "Layar penuh"}
+            </span>
+          </button>
         </div>
-      ) : null}
+        {seekFeedback ? (
+          <div
+            key={seekFeedback.key}
+            className={cn(
+              "pointer-events-none absolute inset-y-0 flex w-1/2 items-center justify-center bg-black/15 text-white",
+              seekFeedback.direction === "backward" ? "left-0" : "right-0",
+            )}
+          >
+            <div className="flex size-20 animate-ping items-center justify-center rounded-full bg-white/10" />
+            <div className="absolute flex items-center gap-2 rounded-full bg-black/55 px-4 py-2 text-sm font-semibold backdrop-blur">
+              {seekFeedback.direction === "backward" ? (
+                <RotateCcw className="size-5" />
+              ) : (
+                <RotateCw className="size-5" />
+              )}
+              {seekFeedback.direction === "backward" ? "-10 detik" : "+10 detik"}
+            </div>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
