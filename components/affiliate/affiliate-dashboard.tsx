@@ -18,6 +18,10 @@ import {
   type AffiliateActionState,
 } from "@/app/affiliate/actions";
 import { Button } from "@/components/ui/button";
+import {
+  isTelegramMiniAppBrowser,
+  openTelegramShareComposer,
+} from "@/lib/telegram-share-client";
 import { cn } from "@/lib/utils";
 
 type AffiliateActivityItem = {
@@ -291,10 +295,15 @@ export function AffiliateDashboard({
 
   async function shareLink() {
     try {
-      if (navigator.share) {
+      if (isTelegramMiniAppBrowser()) {
+        openTelegramShareComposer({
+          text: "Buka Mini App Layar BoxOffice dari link Telegram ini.",
+          url: link,
+        });
+      } else if (navigator.share) {
         await navigator.share({
-          text: "Buka Mini App Box Office dari link Telegram ini.",
-          title: "Box Office Telegram Affiliate",
+          text: "Buka Mini App Layar BoxOffice dari link Telegram ini.",
+          title: "Layar BoxOffice Affiliate",
           url: link,
         });
       } else {

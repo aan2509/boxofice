@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { Calendar, Clapperboard, Star, Users } from "lucide-react";
@@ -7,12 +8,16 @@ import { DetailWatchActions } from "@/components/movie/detail-watch-actions";
 import { MovieCardLink } from "@/components/movie/movie-card-link";
 import { SynopsisAccordion } from "@/components/movie/synopsis-accordion";
 import { Badge } from "@/components/ui/badge";
+import { ensureAffiliateProfileWithCode } from "@/lib/affiliate";
 import {
   getMovieDetailData,
   getRelatedMovies,
   type MovieCard,
 } from "@/lib/movie-feeds";
 import { prisma } from "@/lib/prisma";
+import { getEnvPublicAppUrl } from "@/lib/telegram-bot-settings";
+import { getPreferredTelegramShareLinksForUser } from "@/lib/telegram-partner-bots";
+import { buildTelegramAppStartParam } from "@/lib/telegram-miniapp";
 import { requireUserSession } from "@/lib/user-auth";
 import { getVipProgramSettingsSafe, getVipStatus } from "@/lib/vip";
 
@@ -43,6 +48,70 @@ function formatReleaseDate(value: string | undefined) {
     day: "numeric",
     year: "numeric",
   }).format(date);
+}
+
+function buildMovieDescription(movie: {
+  description: string | null;
+  genre: string | null;
+  title: string;
+  year: string | null;
+}) {
+  const rawDescription =
+    movie.description?.trim() ||
+    `Tonton ${movie.title}${movie.year ? ` (${movie.year})` : ""} di Layar BoxOffice langsung dari Telegram.`;
+
+  const compactDescription = rawDescription.replace(/\s+/g, " ").trim();
+
+  if (compactDescription.length <= 180) {
+    return compactDescription;
+  }
+
+  return `${compactDescription.slice(0, 177).trimEnd()}...`;
+}
+
+export async function generateMetadata({
+  params,
+}: Pick<MoviePageProps, "params">): Promise<Metadata> {
+  const { id } = await params;
+  const movie = await getMovieDetailData(id);
+
+  if (!movie) {
+    return {
+      title: "Film tidak ditemukan",
+    };
+  }
+
+  const title = movie.year ? `${movie.title} (${movie.year})` : movie.title;
+  const description = buildMovieDescription(movie);
+  const canonicalUrl = `${getEnvPublicAppUrl()}/movie/${movie.id}`;
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: canonicalUrl,
+    },
+    openGraph: {
+      title,
+      description,
+      type: "video.movie",
+      url: canonicalUrl,
+      images: movie.thumbnail
+        ? [
+            {
+              url: movie.thumbnail,
+              alt: `Poster ${movie.title}`,
+            },
+          ]
+        : undefined,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: movie.thumbnail ? [movie.thumbnail] : undefined,
+    },
+  };
 }
 
 function MovieCredits({
@@ -146,7 +215,28 @@ export default async function MoviePage({ params, searchParams }: MoviePageProps
   const fallbackSynopsis =
     movie.description ??
     "Sinopsis belum tersedia. Video akan disiapkan otomatis saat kamu menekan tombol tonton.";
+  const shareDescription = buildMovieDescription(movie);
   const releaseDate = formatReleaseDate(movie.releaseDate ?? undefined);
+  const shareUrl = `${getEnvPublicAppUrl()}/movie/${movie.id}`;
+  const affiliateProfile = await ensureAffiliateProfileWithCode({
+    id: user.id,
+    name: user.name,
+  }).catch(() => null);
+  const telegramShareStartParam = affiliateProfile?.referralCode
+    ? buildTelegramAppStartParam({
+        movieId: movie.id,
+        referralCode: affiliateProfile.referralCode,
+      })
+    : "";
+  const telegramShareLinks =
+    telegramShareStartParam && affiliateProfile?.referralCode
+      ? await getPreferredTelegramShareLinksForUser({
+          startParam: telegramShareStartParam,
+          userId: user.id,
+        }).catch(() => null)
+      : null;
+  const telegramShareUrl =
+    telegramShareLinks?.miniAppUrl || telegramShareLinks?.chatUrl || null;
 
   return (
     <main className="min-h-screen bg-black text-white">
@@ -237,6 +327,9 @@ export default async function MoviePage({ params, searchParams }: MoviePageProps
                 initialOpen={shouldOpenPlayer}
                 movieId={movie.id}
                 poster={poster}
+                shareText={shareDescription}
+                shareUrl={shareUrl}
+                telegramShareUrl={telegramShareUrl}
                 title={movie.title}
               />
 

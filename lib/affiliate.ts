@@ -183,9 +183,17 @@ export async function getAffiliateProfileCountSafe() {
 }
 
 export async function ensureAffiliateProfile(user: AffiliateUser) {
+  const profile = await ensureAffiliateProfileWithCode(user);
+
+  return {
+    id: profile.id,
+  };
+}
+
+export async function ensureAffiliateProfileWithCode(user: AffiliateUser) {
   const existing = await prisma.affiliateProfile.findUnique({
     where: { userId: user.id },
-    select: { id: true },
+    select: { id: true, referralCode: true },
   });
 
   if (existing) {
@@ -200,7 +208,7 @@ export async function ensureAffiliateProfile(user: AffiliateUser) {
       referralCode,
       userId: user.id,
     },
-    select: { id: true },
+    select: { id: true, referralCode: true },
   });
 }
 

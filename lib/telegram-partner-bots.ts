@@ -226,6 +226,68 @@ export async function getPreferredPartnerBotShareLink(input: {
   }
 }
 
+export async function getPreferredTelegramShareLinksForUser(input: {
+  startParam: string;
+  userId: string;
+}) {
+  const telegram = await getTelegramBotSettingsSafe();
+  const fallback = {
+    chatUrl: buildTelegramBotChatUrlForUsername(
+      telegram.runtime.botUsername,
+      input.startParam,
+    ),
+    miniAppUrl: buildTelegramMiniAppUrlForConfig(
+      {
+        botUsername: telegram.runtime.botUsername,
+        miniAppShortName: telegram.runtime.miniAppShortName,
+      },
+      input.startParam,
+    ),
+    source: "default" as const,
+  };
+
+  try {
+    const partnerBot = await prisma.partnerBot.findFirst({
+      where: {
+        active: true,
+        ownerUserId: input.userId,
+      },
+      orderBy: {
+        updatedAt: "desc",
+      },
+      select: {
+        botUsername: true,
+        miniAppShortName: true,
+      },
+    });
+
+    if (!partnerBot) {
+      return fallback;
+    }
+
+    return {
+      chatUrl: buildTelegramBotChatUrlForUsername(
+        partnerBot.botUsername,
+        input.startParam,
+      ),
+      miniAppUrl: buildTelegramMiniAppUrlForConfig(
+        {
+          botUsername: partnerBot.botUsername,
+          miniAppShortName: partnerBot.miniAppShortName,
+        },
+        input.startParam,
+      ),
+      source: "partner" as const,
+    };
+  } catch (error) {
+    if (isMissingPartnerBotSchemaError(error)) {
+      return fallback;
+    }
+
+    throw error;
+  }
+}
+
 export async function getPreferredAffiliateNotificationBotForUser(userId: string) {
   const telegram = await getTelegramBotSettingsSafe();
   const fallback = {

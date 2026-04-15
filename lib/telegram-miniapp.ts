@@ -114,20 +114,53 @@ export function buildAffiliateStartParam(referralCode: string) {
   return `ref_${referralCode.trim().toUpperCase()}`;
 }
 
+export function buildTelegramAppStartParam(input: {
+  movieId?: string | null;
+  referralCode?: string | null;
+}) {
+  const parts: string[] = [];
+  const referralCode = input.referralCode?.trim();
+  const movieId = input.movieId?.trim();
+
+  if (referralCode) {
+    parts.push(buildAffiliateStartParam(referralCode));
+  }
+
+  if (movieId) {
+    parts.push(`movie_${movieId}`);
+  }
+
+  return parts.join("__");
+}
+
 export function extractAffiliateCodeFromStartParam(startParam: string | null) {
   if (!startParam) {
     return null;
   }
 
   const normalized = startParam.trim();
+  const referralMatch = normalized.match(/(?:^|__)ref_([a-z0-9]+)/i);
+  const referralCode =
+    referralMatch?.[1]?.trim().toUpperCase() ||
+    (/^[A-Z0-9]{4,32}$/i.test(normalized) ? normalized.toUpperCase() : "");
 
-  if (!normalized.toLowerCase().startsWith("ref_")) {
+  return referralCode || null;
+}
+
+export function extractMovieIdFromStartParam(startParam: string | null) {
+  if (!startParam) {
     return null;
   }
 
-  const referralCode = normalized.slice(4).trim().toUpperCase();
+  const normalized = startParam.trim();
+  const movieMatch = normalized.match(/(?:^|__)movie_([a-z0-9-]+)/i);
+  const movieId = movieMatch?.[1]?.trim() ?? "";
 
-  return referralCode || null;
+  if (!movieId || !/^[a-z0-9-]+$/i.test(movieId)) {
+    return null;
+  }
+
+  return movieId;
 }
 
 function parseTelegramUser(value: string | null) {

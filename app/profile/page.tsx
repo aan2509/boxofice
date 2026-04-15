@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { MessageCircle, Sparkles, UserRound } from "lucide-react";
 
+import { AddToHomeScreenCard } from "@/components/pwa/add-to-home-screen-card";
 import { Button } from "@/components/ui/button";
 import { getCinematicBackdropMovies } from "@/lib/movie-feeds";
 import { getOwnedPartnerBotsForUser } from "@/lib/telegram-partner-bots";
@@ -206,6 +207,8 @@ export default async function ProfilePage() {
               </Button>
             </div>
           ) : null}
+
+          <AddToHomeScreenCard />
         </div>
       </section>
     </main>

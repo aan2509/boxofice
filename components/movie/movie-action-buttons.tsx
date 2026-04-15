@@ -5,11 +5,18 @@ import { Bookmark, Check, Share2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+import {
+  isTelegramMiniAppBrowser,
+  openTelegramShareComposer,
+} from "@/lib/telegram-share-client";
 import { cn } from "@/lib/utils";
 
 type MovieActionButtonsProps = {
   initialSaved?: boolean;
   movieId: string;
+  shareText?: string;
+  shareUrl?: string;
+  telegramShareUrl?: string | null;
   title: string;
   className?: string;
 };
@@ -17,6 +24,9 @@ type MovieActionButtonsProps = {
 export function MovieActionButtons({
   initialSaved = false,
   movieId,
+  shareText,
+  shareUrl,
+  telegramShareUrl,
   title,
   className,
 }: MovieActionButtonsProps) {
@@ -68,13 +78,19 @@ export function MovieActionButtons({
   }
 
   async function shareMovie() {
-    const url = window.location.href;
+    const url = shareUrl || window.location.href;
+    const text = shareText || `Tonton ${title} di Layar BoxOffice`;
 
     try {
-      if (navigator.share) {
+      if (isTelegramMiniAppBrowser() && telegramShareUrl) {
+        openTelegramShareComposer({
+          text,
+          url: telegramShareUrl,
+        });
+      } else if (navigator.share) {
         await navigator.share({
           title,
-          text: `Tonton ${title} di Box Office`,
+          text,
           url,
         });
       } else {
@@ -109,7 +125,9 @@ export function MovieActionButtons({
         className="h-12 border border-white/10 bg-white/10 px-4 text-white hover:bg-white/15"
       >
         <Share2 className="size-4" />
-        {shareLabel}
+        {isTelegramMiniAppBrowser() && telegramShareUrl
+          ? "Bagikan Telegram"
+          : shareLabel}
       </Button>
     </div>
   );

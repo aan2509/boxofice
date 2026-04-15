@@ -3,6 +3,8 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 
+import { extractMovieIdFromStartParam } from "@/lib/telegram-miniapp";
+
 type TelegramWebApp = {
   initData?: string;
   ready?: () => void;
@@ -64,6 +66,16 @@ function readStartParamFromLocation() {
     params.get("tgWebAppStartParam") ??
     params.get("ref")
   );
+}
+
+function getTelegramStartTargetPath() {
+  const movieId = extractMovieIdFromStartParam(readStartParamFromLocation());
+
+  if (movieId) {
+    return `/movie/${movieId}`;
+  }
+
+  return null;
 }
 
 export function TelegramSessionSync() {
@@ -130,6 +142,14 @@ export function TelegramSessionSync() {
           "boxofice_last_telegram_id",
           activeIdentity.telegramId,
         );
+
+        const targetPath = getTelegramStartTargetPath();
+
+        if (targetPath && window.location.pathname === "/") {
+          router.replace(targetPath);
+          return;
+        }
+
         router.refresh();
       } finally {
         if (!cancelled) {

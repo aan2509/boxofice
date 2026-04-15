@@ -17,6 +17,9 @@ type DetailWatchActionsProps = {
   initialOpen?: boolean;
   movieId: string;
   poster?: string | null;
+  shareText?: string;
+  shareUrl?: string;
+  telegramShareUrl?: string | null;
   title: string;
 };
 
@@ -25,6 +28,9 @@ export function DetailWatchActions({
   initialOpen = false,
   movieId,
   poster,
+  shareText,
+  shareUrl,
+  telegramShareUrl,
   title,
 }: DetailWatchActionsProps) {
   const playerRef = React.useRef<HTMLDivElement | null>(null);
@@ -106,6 +112,9 @@ export function DetailWatchActions({
         <MovieActionButtons
           initialSaved={initialSaved}
           movieId={movieId}
+          shareText={shareText}
+          shareUrl={shareUrl}
+          telegramShareUrl={telegramShareUrl}
           title={title}
         />
         <Button

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { MessageCircle, ShieldCheck, Smartphone } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { extractMovieIdFromStartParam } from "@/lib/telegram-miniapp";
 
 type TelegramWebApp = {
   disableVerticalSwipes?: () => void;
@@ -51,6 +52,17 @@ function readStartParamFromLocation() {
     params.get("ref") ??
     ""
   );
+}
+
+function getTelegramStartTargetPath() {
+  const startParam = readStartParamFromLocation();
+  const movieId = extractMovieIdFromStartParam(startParam);
+
+  if (movieId) {
+    return `/movie/${movieId}`;
+  }
+
+  return null;
 }
 
 export function TelegramEntryGate({
@@ -112,7 +124,7 @@ export function TelegramEntryGate({
       }
 
       setStatus("Akun siap. Membuka Box Office...");
-      router.replace(successRedirectPath);
+      router.replace(getTelegramStartTargetPath() ?? successRedirectPath);
       router.refresh();
     } catch (authError) {
       setError(
