@@ -655,7 +655,7 @@ export async function applyAffiliateCommissionForVipOrder(input: {
   const shouldActivateReferral = referral.status !== "active";
 
   return prisma.$transaction(async (tx) => {
-    await tx.affiliateProfile.update({
+    const updatedProfile = await tx.affiliateProfile.update({
       where: { id: referral.profile.id },
       data: {
         activeReferrals: shouldActivateReferral
@@ -668,6 +668,18 @@ export async function applyAffiliateCommissionForVipOrder(input: {
         },
         totalCommission: {
           increment: commissionAmount,
+        },
+      },
+      select: {
+        availableBalance: true,
+        id: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+            telegramId: true,
+            telegramUsername: true,
+          },
         },
       },
     });
@@ -699,6 +711,7 @@ export async function applyAffiliateCommissionForVipOrder(input: {
 
     return {
       commissionAmount,
+      profile: updatedProfile,
       referralActivated: shouldActivateReferral,
     };
   });

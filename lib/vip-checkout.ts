@@ -5,7 +5,8 @@ import {
   getPaymentGatewaySettingsSafe,
   getPaymenkuChannels,
 } from "@/lib/payments";
-import { sendTelegramUserMessage } from "@/lib/telegram-bot";
+import { getPreferredAffiliateNotificationBotForUser } from "@/lib/telegram-partner-bots";
+import { sendTelegramRuntimeMessage, sendTelegramUserMessage } from "@/lib/telegram-bot";
 
 type PaymenkuCreateTransactionResponse = {
   data?: {
@@ -90,6 +91,64 @@ function normalizeChannelType(value: string | null | undefined) {
   return value?.trim().toLowerCase() === "qris" ? "qris" : "va";
 }
 
+function formatCurrency(amount: number) {
+  return new Intl.NumberFormat("id-ID", {
+    currency: "IDR",
+    maximumFractionDigits: 0,
+    style: "currency",
+  }).format(Math.max(0, Math.round(amount)));
+}
+
+function formatTelegramHandle(username: string | null | undefined) {
+  const normalized = username?.trim().replace(/^@/, "");
+  return normalized ? `@${normalized}` : "-";
+}
+
+async function notifyAffiliateOwnerForVipJoin(input: {
+  buyerName: string;
+  buyerUsername?: string | null;
+  commissionAmount: number;
+  ownerTelegramId?: string | null;
+  ownerUserId: string;
+  packageTitle: string;
+  totalActiveCommission: number;
+  transactionAmount: number;
+}) {
+  if (!input.ownerTelegramId) {
+    return false;
+  }
+
+  const deliveryBot = await getPreferredAffiliateNotificationBotForUser(
+    input.ownerUserId,
+  ).catch(() => null);
+
+  const text =
+    "💸 Komisi affiliate baru\n\n" +
+    `Pembeli: ${input.buyerName} (${formatTelegramHandle(input.buyerUsername)})\n` +
+    `Paket VIP: ${input.packageTitle}\n` +
+    `Nilai transaksi: ${formatCurrency(input.transactionAmount)}\n` +
+    `Komisi: ${formatCurrency(input.commissionAmount)}\n` +
+    `Total komisimu saat ini: ${formatCurrency(input.totalActiveCommission)}`;
+
+  return sendTelegramRuntimeMessage({
+    botToken: deliveryBot?.botToken,
+    replyMarkup: {
+      inline_keyboard: [
+        [
+          {
+            text: "Buka halaman affiliate",
+            web_app: {
+              url: deliveryBot?.affiliateUrl ?? "https://example.com/affiliate",
+            },
+          },
+        ],
+      ],
+    },
+    telegramId: input.ownerTelegramId,
+    text,
+  }).catch(() => false);
+}
+
 function isLikelyVipOrderExpiry(input: {
   durationDays: number;
   expiresAt: Date | null;
@@ -152,6 +211,7 @@ async function activateVipFromOrder(orderId: string, paidAt: Date | null) {
           id: true,
           name: true,
           telegramId: true,
+          telegramUsername: true,
           vipExpiresAt: true,
           vipStartedAt: true,
         },
@@ -192,13 +252,46 @@ async function activateVipFromOrder(orderId: string, paidAt: Date | null) {
   const metadata = getOrderPaymentMetadata(order);
   const commissionBaseAmount =
     parseAmount(metadata?.amountReceived) || order.plan.priceAmount;
+  const sendAffiliateOwnerNotification = async (
+    commissionResult:
+      | {
+          commissionAmount: number;
+          profile: {
+            availableBalance: number;
+            user: {
+              id: string;
+              name: string;
+              telegramId: string | null;
+              telegramUsername: string | null;
+            };
+          };
+          referralActivated: boolean;
+        }
+      | null,
+  ) => {
+    if (!commissionResult?.profile.user.telegramId) {
+      return;
+    }
+
+    await notifyAffiliateOwnerForVipJoin({
+      buyerName: order.user.name,
+      buyerUsername: order.user.telegramUsername,
+      commissionAmount: commissionResult.commissionAmount,
+      ownerTelegramId: commissionResult.profile.user.telegramId,
+      ownerUserId: commissionResult.profile.user.id,
+      packageTitle: order.plan.title,
+      totalActiveCommission: commissionResult.profile.availableBalance,
+      transactionAmount: commissionBaseAmount,
+    }).catch(() => null);
+  };
 
   if (order.status === "paid" && userAlreadyHasThisVip) {
-    await applyAffiliateCommissionForVipOrder({
+    const commissionResult = await applyAffiliateCommissionForVipOrder({
       amount: commissionBaseAmount,
       orderId: order.id,
       referredUserId: order.user.id,
     }).catch(() => null);
+    await sendAffiliateOwnerNotification(commissionResult);
 
     return order;
   }
@@ -233,11 +326,12 @@ async function activateVipFromOrder(orderId: string, paidAt: Date | null) {
     });
   });
 
-  await applyAffiliateCommissionForVipOrder({
+  const commissionResult = await applyAffiliateCommissionForVipOrder({
     amount: commissionBaseAmount,
     orderId: order.id,
     referredUserId: order.user.id,
   }).catch(() => null);
+  await sendAffiliateOwnerNotification(commissionResult);
 
   await sendTelegramUserMessage({
     telegramId: order.user.telegramId,

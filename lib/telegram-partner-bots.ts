@@ -226,6 +226,50 @@ export async function getPreferredPartnerBotShareLink(input: {
   }
 }
 
+export async function getPreferredAffiliateNotificationBotForUser(userId: string) {
+  const telegram = await getTelegramBotSettingsSafe();
+  const fallback = {
+    affiliateUrl: `${telegram.runtime.publicAppUrl}/affiliate`,
+    botLabel: telegram.runtime.botUsername || "Box Office",
+    botToken: telegram.runtime.botToken || null,
+    kind: "default" as const,
+  };
+
+  try {
+    const partnerBot = await prisma.partnerBot.findFirst({
+      where: {
+        active: true,
+        ownerUserId: userId,
+      },
+      orderBy: {
+        updatedAt: "desc",
+      },
+      select: {
+        botName: true,
+        botToken: true,
+        label: true,
+      },
+    });
+
+    if (!partnerBot?.botToken?.trim()) {
+      return fallback;
+    }
+
+    return {
+      affiliateUrl: `${telegram.runtime.publicAppUrl}/affiliate`,
+      botLabel: partnerBot.label?.trim() || partnerBot.botName,
+      botToken: partnerBot.botToken.trim(),
+      kind: "partner" as const,
+    };
+  } catch (error) {
+    if (isMissingPartnerBotSchemaError(error)) {
+      return fallback;
+    }
+
+    throw error;
+  }
+}
+
 export async function getPartnerBotForWebhook(partnerBotId: string) {
   return prisma.partnerBot.findUnique({
     where: { id: partnerBotId },
