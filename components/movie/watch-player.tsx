@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { RotateCcw, RotateCw } from "lucide-react";
+import { Expand, Minimize, RotateCcw, RotateCw } from "lucide-react";
 import type Hls from "hls.js";
 
 import { Button } from "@/components/ui/button";
@@ -45,6 +45,31 @@ type ScreenOrientationWithLock = ScreenOrientation & {
 
 type VideoElementWithFastSeek = HTMLVideoElement & {
   fastSeek?: (time: number) => void;
+  webkitEnterFullscreen?: () => void;
+  webkitSupportsFullscreen?: boolean;
+};
+
+type TelegramWebApp = {
+  exitFullscreen?: () => void;
+  expand?: () => void;
+  isFullscreen?: boolean;
+  isVersionAtLeast?: (version: string) => boolean;
+  offEvent?: (
+    event: "fullscreenChanged" | "fullscreenFailed",
+    callback: (payload?: unknown) => void,
+  ) => void;
+  onEvent?: (
+    event: "fullscreenChanged" | "fullscreenFailed",
+    callback: (payload?: unknown) => void,
+  ) => void;
+  requestFullscreen?: () => void;
+  setHeaderColor?: (color: string) => void;
+};
+
+type TelegramWindow = Window & {
+  Telegram?: {
+    WebApp?: TelegramWebApp;
+  };
 };
 
 function isHlsSource(source: CachedStreamSource) {
@@ -107,6 +132,14 @@ function unlockOrientationIfPossible() {
   screen.orientation?.unlock?.();
 }
 
+function getTelegramWebApp() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  return (window as TelegramWindow).Telegram?.WebApp ?? null;
+}
+
 export function WatchPlayer({
   autoPlay = false,
   defaultQuality,
@@ -147,6 +180,8 @@ export function WatchPlayer({
     null,
   );
   const [failedSourceUrls, setFailedSourceUrls] = React.useState<string[]>([]);
+  const [isBrowserFullscreen, setIsBrowserFullscreen] = React.useState(false);
+  const [isTelegramFullscreen, setIsTelegramFullscreen] = React.useState(false);
   const [retryCount, setRetryCount] = React.useState(0);
 
   React.useEffect(() => {
@@ -519,12 +554,57 @@ export function WatchPlayer({
   }, [movieId, sources.length]);
 
   React.useEffect(() => {
-    function handleFullscreenChange() {
-      if (document.fullscreenElement === videoRef.current) {
+    const telegram = getTelegramWebApp();
+
+    if (!telegram?.onEvent) {
+      return;
+    }
+
+    function handleFullscreenChanged(payload?: unknown) {
+      const isFullscreen =
+        typeof payload === "object" &&
+        payload !== null &&
+        "is_fullscreen" in payload
+          ? Boolean(
+              (payload as {
+                is_fullscreen?: boolean;
+              }).is_fullscreen,
+            )
+          : Boolean(telegram?.isFullscreen);
+
+      setIsTelegramFullscreen(isFullscreen);
+
+      if (isFullscreen) {
         void lockLandscapeIfPossible();
         return;
       }
 
+      unlockOrientationIfPossible();
+    }
+
+    function handleFullscreenFailed() {
+      setIsTelegramFullscreen(Boolean(telegram?.isFullscreen));
+    }
+
+    telegram.onEvent("fullscreenChanged", handleFullscreenChanged);
+    telegram.onEvent("fullscreenFailed", handleFullscreenFailed);
+    setIsTelegramFullscreen(Boolean(telegram.isFullscreen));
+
+    return () => {
+      telegram.offEvent?.("fullscreenChanged", handleFullscreenChanged);
+      telegram.offEvent?.("fullscreenFailed", handleFullscreenFailed);
+    };
+  }, []);
+
+  React.useEffect(() => {
+    function handleFullscreenChange() {
+      if (document.fullscreenElement === videoRef.current) {
+        setIsBrowserFullscreen(true);
+        void lockLandscapeIfPossible();
+        return;
+      }
+
+      setIsBrowserFullscreen(false);
       unlockOrientationIfPossible();
     }
 
@@ -625,6 +705,54 @@ export function WatchPlayer({
     setSelectedSourceUrl(source.url);
   }
 
+  async function toggleFullscreen() {
+    const video = videoRef.current;
+    const telegram = getTelegramWebApp();
+
+    if (telegram?.requestFullscreen && telegram.isVersionAtLeast?.("8.0")) {
+      telegram.setHeaderColor?.("#000000");
+
+      if (telegram.isFullscreen) {
+        telegram.exitFullscreen?.();
+        setIsTelegramFullscreen(false);
+        unlockOrientationIfPossible();
+        return;
+      }
+
+      telegram.requestFullscreen();
+      telegram.expand?.();
+      setIsTelegramFullscreen(true);
+      await lockLandscapeIfPossible();
+      return;
+    }
+
+    if (!video) {
+      return;
+    }
+
+    const fullscreenCapableVideo = video as VideoElementWithFastSeek;
+
+    if (document.fullscreenElement === video) {
+      await document.exitFullscreen?.().catch(() => undefined);
+      unlockOrientationIfPossible();
+      return;
+    }
+
+    if (typeof video.requestFullscreen === "function") {
+      await video.requestFullscreen().catch(() => undefined);
+      await lockLandscapeIfPossible();
+      return;
+    }
+
+    if (
+      typeof fullscreenCapableVideo.webkitEnterFullscreen === "function" &&
+      fullscreenCapableVideo.webkitSupportsFullscreen
+    ) {
+      fullscreenCapableVideo.webkitEnterFullscreen();
+      await lockLandscapeIfPossible();
+    }
+  }
+
   if (!stream && !error) {
     return (
       <div className="relative flex aspect-video w-full overflow-hidden rounded-md bg-neutral-950 text-neutral-200 ring-1 ring-white/10">
@@ -720,6 +848,21 @@ export function WatchPlayer({
           ))}
         </div>
       ) : null}
+      <div className="absolute bottom-2 right-2 z-20">
+        <button
+          type="button"
+          onClick={() => void toggleFullscreen()}
+          data-haptic="medium"
+          className="inline-flex h-10 items-center gap-2 rounded-md border border-white/10 bg-black/65 px-3 text-xs font-semibold text-white backdrop-blur transition-colors hover:bg-black/80"
+        >
+          {isTelegramFullscreen || isBrowserFullscreen ? (
+            <Minimize className="size-4" />
+          ) : (
+            <Expand className="size-4" />
+          )}
+          <span className="hidden sm:inline">Layar penuh</span>
+        </button>
+      </div>
       {seekFeedback ? (
         <div
           key={seekFeedback.key}
