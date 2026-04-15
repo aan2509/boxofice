@@ -1,6 +1,7 @@
 import { Search } from "lucide-react";
 
-import { updateUserVipStatus } from "@/app/admin/actions";
+import { deleteUserAccount, updateUserVipStatus } from "@/app/admin/actions";
+import { DeleteUserForm } from "@/components/admin/delete-user-form";
 import {
   AdminMetricCard,
   AdminSurface,
@@ -15,6 +16,7 @@ type AdminUsersPageProps = {
   searchParams: Promise<{
     message?: string;
     q?: string;
+    user?: string;
     vip?: string;
   }>;
 };
@@ -82,6 +84,20 @@ export default async function AdminUsersPage({
           ) : (
             <span className="text-emerald-100">
               {params.message ?? "Status VIP user berhasil diperbarui."}
+            </span>
+          )}
+        </AdminSurface>
+      ) : null}
+
+      {params.user ? (
+        <AdminSurface className="text-sm leading-6 text-neutral-200">
+          {params.user === "error" ? (
+            <span className="text-red-200">
+              {params.message ?? "User gagal diperbarui."}
+            </span>
+          ) : (
+            <span className="text-emerald-100">
+              {params.message ?? "User berhasil diperbarui."}
             </span>
           )}
         </AdminSurface>
@@ -166,7 +182,7 @@ export default async function AdminUsersPage({
                 <th className="px-5 py-4 font-medium">Referral aktif</th>
                 <th className="px-5 py-4 font-medium">Sesi</th>
                 <th className="px-5 py-4 font-medium">Terdaftar</th>
-                <th className="px-5 py-4 font-medium">Aksi VIP</th>
+                <th className="px-5 py-4 font-medium">Aksi</th>
               </tr>
             </thead>
             <tbody>
@@ -252,7 +268,7 @@ export default async function AdminUsersPage({
                       <td className="px-5 py-4 text-sm text-neutral-300">
                         {formatDate(user.createdAt)}
                       </td>
-                      <td className="px-5 py-4">
+                      <td className="space-y-3 px-5 py-4">
                         <form
                           action={updateUserVipStatus}
                           className="space-y-2 rounded-[16px] border border-white/10 bg-black/20 p-3"
@@ -289,6 +305,12 @@ export default async function AdminUsersPage({
                             </Button>
                           </div>
                         </form>
+                        <DeleteUserForm
+                          action={deleteUserAccount}
+                          redirectTo={redirectTo}
+                          userId={user.id}
+                          userName={user.name}
+                        />
                       </td>
                     </tr>
                   );

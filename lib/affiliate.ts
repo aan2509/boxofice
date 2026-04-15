@@ -469,7 +469,14 @@ export async function applyAffiliateCommissionForVipOrder(input: {
   const activityKey = `vip-order:${input.orderId}`;
   const existingActivity = await prisma.affiliateActivity.findFirst({
     where: {
-      description: activityKey,
+      OR: [
+        { description: activityKey },
+        {
+          description: {
+            contains: input.orderId,
+          },
+        },
+      ],
       profileId: referral.profile.id,
       type: "commission_earned",
     },
@@ -515,7 +522,9 @@ export async function applyAffiliateCommissionForVipOrder(input: {
     await tx.affiliateActivity.create({
       data: {
         amount: commissionAmount,
-        description: activityKey,
+        description:
+          `Komisi dari pembayaran VIP order ${input.orderId}. ` +
+          "Saldo otomatis masuk setelah pembayaran referral berhasil.",
         profileId: referral.profile.id,
         title: shouldActivateReferral
           ? "Referral VIP pertama berhasil"

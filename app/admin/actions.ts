@@ -846,6 +846,107 @@ export async function updateUserVipStatus(formData: FormData) {
   );
 }
 
+export async function deleteUserAccount(formData: FormData) {
+  await requireAdminSession();
+
+  const redirectBasePath = resolveRedirectTarget(formData, "/admin/users");
+  const userId = readTextField(formData, "userId");
+
+  if (!userId) {
+    redirect(
+      `${redirectBasePath}?user=error&message=${encodeURIComponent("User tidak ditemukan.")}`,
+    );
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      email: true,
+      id: true,
+      name: true,
+    },
+  });
+
+  if (!user) {
+    redirect(
+      `${redirectBasePath}?user=error&message=${encodeURIComponent("User tidak ditemukan atau sudah dihapus.")}`,
+    );
+  }
+
+  await prisma.$transaction(async (tx) => {
+    const referral = await tx.affiliateReferral.findUnique({
+      where: { referredUserId: user.id },
+      select: {
+        commissionEarned: true,
+        profile: {
+          select: {
+            activeReferrals: true,
+            availableBalance: true,
+            id: true,
+            totalCommission: true,
+            totalSignups: true,
+          },
+        },
+        status: true,
+      },
+    });
+
+    if (referral) {
+      const shouldReduceActiveReferral = referral.status === "active";
+
+      await tx.affiliateProfile.update({
+        where: { id: referral.profile.id },
+        data: {
+          activeReferrals: shouldReduceActiveReferral
+            ? Math.max(0, referral.profile.activeReferrals - 1)
+            : referral.profile.activeReferrals,
+          availableBalance: Math.max(
+            0,
+            referral.profile.availableBalance - referral.commissionEarned,
+          ),
+          totalCommission: Math.max(
+            0,
+            referral.profile.totalCommission - referral.commissionEarned,
+          ),
+          totalSignups: Math.max(0, referral.profile.totalSignups - 1),
+        },
+      });
+
+      if (referral.commissionEarned > 0) {
+        await tx.affiliateActivity.create({
+          data: {
+            amount: -referral.commissionEarned,
+            description:
+              `User referral ${user.name} dihapus oleh admin. ` +
+              "Komisi test dari user ini ikut dibersihkan.",
+            profileId: referral.profile.id,
+            title: "Komisi referral dibatalkan",
+            type: "commission_reversed",
+          },
+        });
+      }
+    }
+
+    await tx.user.delete({
+      where: { id: user.id },
+    });
+  });
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/users");
+  revalidatePath("/admin/payments");
+  revalidatePath("/affiliate");
+  revalidatePath("/library");
+  revalidatePath("/profile");
+  revalidatePath("/vip");
+
+  redirect(
+    `${redirectBasePath}?user=deleted&message=${encodeURIComponent(
+      `User ${user.name || user.email || user.id} berhasil dihapus untuk test ulang.`,
+    )}`,
+  );
+}
+
 export async function logoutAdmin() {
   await requireAdminSession();
   await clearAdminSessionCookie();
