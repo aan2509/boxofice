@@ -12,13 +12,19 @@ export async function startVipPayment(formData: FormData) {
   const user = await requireUserSession();
   const channelCode = String(formData.get("channelCode") ?? "").trim();
   const planId = String(formData.get("planId") ?? "").trim();
+  const planQuery = encodeURIComponent(planId);
+  const channelQuery = channelCode
+    ? `&channel=${encodeURIComponent(channelCode)}`
+    : "";
 
   if (!planId) {
     redirect("/vip?payment=error&message=Paket+VIP+belum+dipilih.");
   }
 
   if (!channelCode) {
-    redirect(`/vip?plan=${encodeURIComponent(planId)}&payment=error&message=Metode+pembayaran+belum+dipilih.`);
+    redirect(
+      `/vip?plan=${planQuery}&payment=error&message=Metode+pembayaran+belum+dipilih.`,
+    );
   }
 
   try {
@@ -36,7 +42,7 @@ export async function startVipPayment(formData: FormData) {
         : "Pembayaran VIP belum bisa dijalankan sekarang.";
 
     redirect(
-      `/vip?plan=${encodeURIComponent(planId)}&payment=error&message=${encodeURIComponent(message)}`,
+      `/vip?plan=${planQuery}${channelQuery}&payment=error&message=${encodeURIComponent(message)}`,
     );
   }
 }

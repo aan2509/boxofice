@@ -17,6 +17,7 @@ export const dynamic = "force-dynamic";
 
 type VipPageProps = {
   searchParams: Promise<{
+    channel?: string;
     message?: string;
     orderId?: string;
     payment?: string;
@@ -93,6 +94,11 @@ export default async function VipPage({ searchParams }: VipPageProps) {
     plansResult.plans.find(
       (plan) => plan.id === params.plan || plan.slug === params.plan,
     ) ?? null;
+  const selectedChannelCode =
+    params.channel?.trim() ||
+    channelResult.groups.qris[0]?.code ||
+    channelResult.groups.va[0]?.code ||
+    "";
   const upgradeUrl =
     vipSettings.joinVipUrl.endsWith("/vip") ||
     vipSettings.joinVipUrl.endsWith("/profile")
@@ -220,7 +226,12 @@ export default async function VipPage({ searchParams }: VipPageProps) {
                 <form action={startVipPayment} className="mt-4 space-y-3">
                   <input type="hidden" name="planId" value={selectedPlan.id} />
 
-                  <details className="group rounded-[22px] border border-white/10 bg-white/[0.04] open:bg-white/[0.06]">
+                  <details
+                    className="group rounded-[22px] border border-white/10 bg-white/[0.04] open:bg-white/[0.06]"
+                    open={channelResult.groups.va.some(
+                      (channel) => channel.code === selectedChannelCode,
+                    )}
+                  >
                     <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-4">
                       <div className="flex items-center gap-3">
                         <span className="flex size-11 items-center justify-center rounded-full bg-white/10 text-white">
@@ -240,52 +251,108 @@ export default async function VipPage({ searchParams }: VipPageProps) {
 
                     <div className="border-t border-white/10 px-3 pb-3 pt-2">
                       <div className="space-y-2">
-                        {channelResult.groups.va.map((channel) => (
-                          <button
-                            key={channel.code}
-                            type="submit"
-                            name="channelCode"
-                            value={channel.code}
-                            className="flex w-full items-center justify-between rounded-[16px] border border-white/10 bg-black/20 px-4 py-3 text-left transition-colors hover:bg-white/[0.08]"
-                            data-haptic="medium"
-                          >
-                            <div>
-                              <p className="font-semibold text-white">{channel.name}</p>
-                              <p className="mt-1 text-xs leading-5 text-neutral-400">
-                                {channel.description}
-                              </p>
-                            </div>
-                            <span className="text-xs font-semibold text-neutral-500">
-                              {channel.feeDisplay || "VA"}
-                            </span>
-                          </button>
-                        ))}
+                        {channelResult.groups.va.map((channel) => {
+                          const isSelected = selectedChannelCode === channel.code;
+
+                          return (
+                            <label
+                              key={channel.code}
+                              className={[
+                                "flex cursor-pointer items-center justify-between gap-3 rounded-[16px] border px-4 py-3 text-left transition-colors",
+                                isSelected
+                                  ? "border-orange-300/30 bg-orange-500/10"
+                                  : "border-white/10 bg-black/20 hover:bg-white/[0.08]",
+                              ].join(" ")}
+                            >
+                              <div className="flex items-center gap-3">
+                                <input
+                                  type="radio"
+                                  name="channelCode"
+                                  value={channel.code}
+                                  defaultChecked={isSelected}
+                                  className="size-4 border-white/20 bg-transparent accent-orange-400"
+                                />
+                                <div>
+                                  <p className="font-semibold text-white">{channel.name}</p>
+                                  <p className="mt-1 text-xs leading-5 text-neutral-400">
+                                    {channel.description}
+                                  </p>
+                                </div>
+                              </div>
+                              <span
+                                className={
+                                  isSelected
+                                    ? "text-xs font-semibold text-orange-100"
+                                    : "text-xs font-semibold text-neutral-500"
+                                }
+                              >
+                                {channel.feeDisplay || "VA"}
+                              </span>
+                            </label>
+                          );
+                        })}
                       </div>
                     </div>
                   </details>
 
-                  <button
-                    type="submit"
-                    name="channelCode"
-                    value="qris"
-                    className="flex w-full items-center justify-between rounded-[22px] border border-indigo-400/25 bg-indigo-500/10 px-4 py-4 text-left transition-colors hover:bg-indigo-500/15"
-                    data-haptic="medium"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="flex size-11 items-center justify-center rounded-full bg-indigo-400/15 text-indigo-100">
-                        <QrCode className="size-5" />
-                      </span>
-                      <div>
-                        <p className="font-semibold text-white">QRIS</p>
-                        <p className="text-sm text-neutral-300">
-                          Scan dengan aplikasi bank atau e-wallet apa pun
-                        </p>
+                  {channelResult.groups.qris[0] ? (
+                    <label
+                      className={[
+                        "flex cursor-pointer items-center justify-between rounded-[22px] border px-4 py-4 text-left transition-colors",
+                        selectedChannelCode === channelResult.groups.qris[0].code
+                          ? "border-indigo-300/30 bg-indigo-500/15"
+                          : "border-indigo-400/25 bg-indigo-500/10 hover:bg-indigo-500/15",
+                      ].join(" ")}
+                      data-haptic="medium"
+                    >
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="radio"
+                          name="channelCode"
+                          value={channelResult.groups.qris[0].code}
+                          defaultChecked={
+                            selectedChannelCode === channelResult.groups.qris[0].code
+                          }
+                          className="size-4 border-white/20 bg-transparent accent-indigo-300"
+                        />
+                        <span className="flex size-11 items-center justify-center rounded-full bg-indigo-400/15 text-indigo-100">
+                          <QrCode className="size-5" />
+                        </span>
+                        <div>
+                          <p className="font-semibold text-white">QRIS</p>
+                          <p className="text-sm text-neutral-300">
+                            Scan dengan aplikasi bank atau e-wallet apa pun
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                    <span className="text-xs font-semibold text-indigo-100">
-                      {channelResult.groups.qris[0]?.feeDisplay || "QRIS"}
-                    </span>
-                  </button>
+                      <span
+                        className={
+                          selectedChannelCode === channelResult.groups.qris[0].code
+                            ? "text-xs font-semibold text-indigo-50"
+                            : "text-xs font-semibold text-indigo-100"
+                        }
+                      >
+                        {channelResult.groups.qris[0].feeDisplay || "QRIS"}
+                      </span>
+                    </label>
+                  ) : null}
+
+                  <div className="rounded-[20px] border border-white/10 bg-white/[0.04] p-4">
+                    <p className="text-sm font-semibold text-white">
+                      Metode terpilih
+                    </p>
+                    <p className="mt-1 text-sm text-neutral-400">
+                      Pilih QRIS atau salah satu bank, lalu lanjutkan ke detail
+                      pembayaran.
+                    </p>
+                    <Button
+                      type="submit"
+                      data-haptic="medium"
+                      className="mt-4 h-12 w-full bg-red-600 text-white hover:bg-red-500"
+                    >
+                      Lanjutkan pembayaran
+                    </Button>
+                  </div>
                 </form>
               ) : (
                 <div className="mt-4 rounded-[20px] border border-white/10 bg-white/[0.04] p-4 text-sm leading-6 text-neutral-300">
