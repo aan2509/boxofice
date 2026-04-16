@@ -332,8 +332,8 @@ export function UpstreamSearch({
 
       {showBlockedNotice ? (
         <div className="mt-4 rounded-md border border-amber-400/20 bg-amber-500/10 px-4 py-3 text-sm leading-6 text-amber-100">
-          Beberapa hasil upstream ternyata hanya halaman pengalihan ke situs lain.
-          Judul seperti itu sekarang kami sembunyikan supaya kamu tidak nyasar.
+          Film lagi di siapkan tunggu update selanjutnya ya,
+          Sekarang bisa tonton film lain dulu.
         </div>
       ) : null}
 
