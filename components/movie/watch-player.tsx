@@ -32,6 +32,13 @@ type SeekFeedback = {
   key: number;
 };
 
+type PointerArea = {
+  axisPosition: number;
+  primarySize: number;
+  rawHeight: number;
+  rawWidth: number;
+};
+
 type OrientationLockValue =
   | "any"
   | "landscape"
@@ -164,6 +171,35 @@ function notifyImmersiveState(active: boolean) {
       detail: { active },
     }),
   );
+}
+
+function getPointerAreaFromBounds(options: {
+  clientX: number;
+  clientY: number;
+  height: number;
+  left: number;
+  rotateImmersive: boolean;
+  top: number;
+  width: number;
+}): PointerArea {
+  const x = Math.max(0, Math.min(options.clientX - options.left, options.width));
+  const y = Math.max(0, Math.min(options.clientY - options.top, options.height));
+
+  if (options.rotateImmersive) {
+    return {
+      axisPosition: options.height > 0 ? 1 - y / options.height : 0.5,
+      primarySize: options.height,
+      rawHeight: options.height,
+      rawWidth: options.width,
+    };
+  }
+
+  return {
+    axisPosition: options.width > 0 ? x / options.width : 0.5,
+    primarySize: options.width,
+    rawHeight: options.height,
+    rawWidth: options.width,
+  };
 }
 
 export function WatchPlayer({
@@ -866,8 +902,8 @@ export function WatchPlayer({
     });
   }
 
-  function handlePointerDoubleTap(clientX: number, width: number) {
-    const isLeftSide = clientX < width / 2;
+  function handlePointerDoubleTap(area: PointerArea) {
+    const isLeftSide = area.axisPosition < 0.5;
     seekBy(isLeftSide ? -10 : 10);
     pulseChrome();
   }
@@ -881,7 +917,17 @@ export function WatchPlayer({
 
     pulseChrome();
     const bounds = event.currentTarget.getBoundingClientRect();
-    handlePointerDoubleTap(event.clientX - bounds.left, bounds.width);
+    handlePointerDoubleTap(
+      getPointerAreaFromBounds({
+        clientX: event.clientX,
+        clientY: event.clientY,
+        height: bounds.height,
+        left: bounds.left,
+        rotateImmersive: shouldRotateImmersive,
+        top: bounds.top,
+        width: bounds.width,
+      }),
+    );
   }
 
   function handleTouchEnd(event: React.TouchEvent<HTMLDivElement>) {
@@ -898,18 +944,33 @@ export function WatchPlayer({
     }
 
     const bounds = event.currentTarget.getBoundingClientRect();
-    const x = touch.clientX - bounds.left;
+    const pointerArea = getPointerAreaFromBounds({
+      clientX: touch.clientX,
+      clientY: touch.clientY,
+      height: bounds.height,
+      left: bounds.left,
+      rotateImmersive: shouldRotateImmersive,
+      top: bounds.top,
+      width: bounds.width,
+    });
     const now = Date.now();
     const lastTap = lastTapRef.current;
 
-    if (lastTap && now - lastTap.time < 280 && Math.abs(lastTap.x - x) < 80) {
-      handlePointerDoubleTap(x, bounds.width);
+    if (
+      lastTap &&
+      now - lastTap.time < 280 &&
+      Math.abs(lastTap.x - pointerArea.axisPosition * pointerArea.primarySize) < 80
+    ) {
+      handlePointerDoubleTap(pointerArea);
       lastTapRef.current = null;
       return;
     }
 
     pulseChrome();
-    lastTapRef.current = { time: now, x };
+    lastTapRef.current = {
+      time: now,
+      x: pointerArea.axisPosition * pointerArea.primarySize,
+    };
   }
 
   function selectSource(source: CachedStreamSource) {
@@ -1129,8 +1190,17 @@ export function WatchPlayer({
           <div
             key={seekFeedback.key}
             className={cn(
-              "pointer-events-none absolute inset-y-0 flex w-1/2 items-center justify-center bg-black/15 text-white",
-              seekFeedback.direction === "backward" ? "left-0" : "right-0",
+              "pointer-events-none absolute flex items-center justify-center bg-black/15 text-white",
+              shouldRotateImmersive
+                ? "inset-x-0 h-1/2 w-full"
+                : "inset-y-0 w-1/2",
+              shouldRotateImmersive
+                ? seekFeedback.direction === "backward"
+                  ? "bottom-0"
+                  : "top-0"
+                : seekFeedback.direction === "backward"
+                  ? "left-0"
+                  : "right-0",
             )}
           >
             <div className="flex size-20 animate-ping items-center justify-center rounded-full bg-white/10" />
