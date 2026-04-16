@@ -1,3 +1,4 @@
+import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Play, Star } from "lucide-react";
@@ -11,7 +12,7 @@ type MovieCardLinkProps = {
   className?: string;
 };
 
-export function MovieCardLink({ movie, className }: MovieCardLinkProps) {
+function MovieCardLinkComponent({ movie, className }: MovieCardLinkProps) {
   return (
     <Link
       href={`/movie/${movie.id}`}
@@ -65,3 +66,14 @@ export function MovieCardLink({ movie, className }: MovieCardLinkProps) {
     </Link>
   );
 }
+
+export const MovieCardLink = React.memo(
+  MovieCardLinkComponent,
+  (previous, next) =>
+    previous.className === next.className &&
+    previous.movie.id === next.movie.id &&
+    previous.movie.title === next.movie.title &&
+    previous.movie.thumbnail === next.movie.thumbnail &&
+    previous.movie.quality === next.movie.quality &&
+    previous.movie.rating === next.movie.rating,
+);

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import { triggerHaptic } from "@/components/feedback/haptic-feedback";
 import { MovieCardLink } from "@/components/movie/movie-card-link";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { HomepageFilters, MovieCard } from "@/lib/movie-feeds";
@@ -45,24 +46,43 @@ export function HomeCatalog({
   totalMovies,
 }: HomeCatalogProps) {
   const [movies, setMovies] = React.useState(initialMovies);
+  const [isNearBottom, setIsNearBottom] = React.useState(false);
   const [nextOffset, setNextOffset] = React.useState<number | null>(
     initialNextOffset,
   );
   const [isLoadingMore, setIsLoadingMore] = React.useState(false);
   const [loadError, setLoadError] = React.useState<string | null>(null);
+  const abortControllerRef = React.useRef<AbortController | null>(null);
+  const isLoadingMoreRef = React.useRef(false);
+  const nextOffsetRef = React.useRef<number | null>(initialNextOffset);
   const sentinelRef = React.useRef<HTMLDivElement | null>(null);
 
+  React.useEffect(() => {
+    nextOffsetRef.current = nextOffset;
+  }, [nextOffset]);
+
   const loadMore = React.useCallback(async () => {
-    if (isLoadingMore || nextOffset === null) {
+    if (isLoadingMoreRef.current || nextOffsetRef.current === null) {
       return;
     }
 
+    const currentOffset = nextOffsetRef.current;
+
+    if (currentOffset === null) {
+      return;
+    }
+
+    isLoadingMoreRef.current = true;
     setIsLoadingMore(true);
     setLoadError(null);
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     try {
-      const response = await fetch(buildCatalogUrl(filters, nextOffset), {
+      const response = await fetch(buildCatalogUrl(filters, currentOffset), {
         credentials: "same-origin",
+        signal: controller.signal,
       });
       const payload = (await response.json().catch(() => null)) as
         | CatalogPayload
@@ -77,6 +97,7 @@ export function HomeCatalog({
       }
 
       const incomingMovies = payload?.items ?? [];
+      let appendedCount = 0;
 
       setMovies((current) => {
         const seen = new Set(current.map((movie) => movie.id));
@@ -86,28 +107,45 @@ export function HomeCatalog({
           if (!seen.has(movie.id)) {
             merged.push(movie);
             seen.add(movie.id);
+            appendedCount += 1;
           }
         }
 
         return merged;
       });
       setNextOffset(payload?.nextOffset ?? null);
+
+      if (appendedCount > 0) {
+        triggerHaptic("light");
+      }
     } catch (error) {
+      if (controller.signal.aborted) {
+        return;
+      }
+
       setLoadError(
         error instanceof Error
           ? error.message
           : "Gagal memuat katalog berikutnya.",
       );
     } finally {
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+      }
+
+      isLoadingMoreRef.current = false;
       setIsLoadingMore(false);
     }
-  }, [filters, isLoadingMore, nextOffset]);
+  }, [filters]);
 
   React.useEffect(() => {
+    abortControllerRef.current?.abort();
     setMovies(initialMovies);
     setNextOffset(initialNextOffset);
     setLoadError(null);
     setIsLoadingMore(false);
+    isLoadingMoreRef.current = false;
+    nextOffsetRef.current = initialNextOffset;
   }, [initialMovies, initialNextOffset]);
 
   React.useEffect(() => {
@@ -122,11 +160,16 @@ export function HomeCatalog({
         const entry = entries[0];
 
         if (entry?.isIntersecting) {
+          setIsNearBottom(true);
           void loadMore();
+          return;
         }
+
+        setIsNearBottom(false);
       },
       {
-        rootMargin: "480px 0px",
+        rootMargin: "1200px 0px 800px 0px",
+        threshold: 0.01,
       },
     );
 
@@ -137,21 +180,14 @@ export function HomeCatalog({
     };
   }, [loadMore, nextOffset]);
 
+  React.useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
+
   return (
     <section className="mx-auto w-full max-w-7xl px-4 pb-28 pt-4 sm:px-8 sm:pb-10 sm:pt-6 lg:px-10">
-      <div className="mb-4 flex items-end justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-neutral-500">
-            Katalog
-          </p>
-          <h2 className="mt-1 text-2xl font-black text-white sm:text-3xl">
-            Semua film
-          </h2>
-        </div>
-        <p className="text-xs text-neutral-400 sm:text-sm">
-          {totalMovies} judul
-        </p>
-      </div>
 
       {movies.length ? (
         <div className="grid grid-cols-3 gap-x-3 gap-y-1.5 sm:grid-cols-4 sm:gap-x-4 sm:gap-y-4 lg:grid-cols-6">
@@ -171,14 +207,11 @@ export function HomeCatalog({
       )}
 
       {isLoadingMore ? (
-        <div className="mt-5 grid grid-cols-3 gap-x-3 gap-y-2 sm:grid-cols-4 sm:gap-x-4 lg:grid-cols-6">
-          {Array.from({ length: 6 }).map((_, index) => (
-            <div key={index}>
-              <Skeleton className="aspect-[2/3] w-full bg-white/10" />
-              <Skeleton className="mt-3 h-4 w-11/12 bg-white/10" />
-              <Skeleton className="mt-2 h-3 w-7/12 bg-white/10" />
-            </div>
-          ))}
+        <div className="pointer-events-none sticky bottom-[calc(env(safe-area-inset-bottom)+78px)] z-10 mt-5 flex justify-center sm:bottom-6">
+          <div className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-black/80 px-4 py-2 text-xs font-medium text-neutral-200 shadow-[0_12px_30px_rgba(0,0,0,0.35)] backdrop-blur-xl">
+            <span className="size-2 animate-pulse rounded-full bg-red-500" />
+            Memuat katalog berikutnya
+          </div>
         </div>
       ) : null}
 
@@ -201,6 +234,16 @@ export function HomeCatalog({
         <p className="mt-6 text-center text-xs text-neutral-500">
           Semua judul yang cocok sudah tampil.
         </p>
+      ) : null}
+
+      {isNearBottom && !isLoadingMore && nextOffset !== null ? (
+        <div className="mt-4 grid grid-cols-3 gap-x-3 gap-y-2 opacity-60 sm:grid-cols-4 sm:gap-x-4 lg:grid-cols-6">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <div key={index}>
+              <Skeleton className="aspect-[2/3] w-full bg-white/10" />
+            </div>
+          ))}
+        </div>
       ) : null}
     </section>
   );

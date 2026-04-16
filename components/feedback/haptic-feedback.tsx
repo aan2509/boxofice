@@ -20,7 +20,7 @@ type TelegramWindow = Window & {
   };
 };
 
-function triggerHaptic(strength: HapticStrength) {
+export function triggerHaptic(strength: HapticStrength) {
   if (typeof window === "undefined") {
     return;
   }

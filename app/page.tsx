@@ -186,29 +186,6 @@ export default async function Home({ searchParams }: HomePageProps) {
                 ))}
               </div>
             </div>
-
-            <div>
-              <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.18em] text-neutral-500">
-                Tahun
-              </div>
-              <div className="-mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden">
-                <FilterChip
-                  active={!selectedYear}
-                  href={buildFilterHref(currentFilters, { year: null })}
-                  label="Semua"
-                />
-                {filters.years.map((yearOption) => (
-                  <FilterChip
-                    key={yearOption}
-                    active={selectedYear === yearOption}
-                    href={buildFilterHref(currentFilters, {
-                      year: yearOption,
-                    })}
-                    label={yearOption}
-                  />
-                ))}
-              </div>
-            </div>
           </div>
         </div>
       </header>

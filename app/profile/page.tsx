@@ -175,7 +175,7 @@ export default async function ProfilePage() {
             <div className="rounded-[20px] border border-white/10 bg-white/[0.05] p-4">
               <p className="inline-flex items-center gap-2 text-sm font-semibold text-white">
                 <UserRound className="size-4 text-red-300" />
-                Identitas
+                User ID
               </p>
               <p className="mt-2 text-sm text-neutral-300">
                 {user.telegramId

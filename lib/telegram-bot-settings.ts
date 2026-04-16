@@ -154,6 +154,20 @@ function createDefaultTelegramBotSettings(): TelegramBotSettingsSnapshot {
   };
 }
 
+export function getFallbackTelegramBotSettingsResult(
+  schemaIssue: string | null = null,
+): TelegramBotSettingsResult {
+  const settings = createDefaultTelegramBotSettings();
+  const runtime = resolveRuntimeFromSettings(settings);
+
+  return {
+    runtime,
+    schemaIssue,
+    schemaReady: false,
+    settings: withDerivedLinks(settings, runtime),
+  };
+}
+
 function resolveRuntimeFromSettings(
   settings: Pick<
     TelegramBotSettingsSnapshot,
@@ -308,16 +322,9 @@ export async function getTelegramBotSettingsSafe(): Promise<TelegramBotSettingsR
       throw error;
     }
 
-    const settings = createDefaultTelegramBotSettings();
-    const runtime = resolveRuntimeFromSettings(settings);
-
-    return {
-      runtime,
-      schemaIssue:
-        "Tabel Telegram bot settings belum ada di database runtime. Jalankan migration terbaru agar pengaturan bot aktif penuh.",
-      schemaReady: false,
-      settings: withDerivedLinks(settings, runtime),
-    };
+    return getFallbackTelegramBotSettingsResult(
+      "Tabel Telegram bot settings belum ada di database runtime. Jalankan migration terbaru agar pengaturan bot aktif penuh.",
+    );
   }
 }
 

@@ -949,10 +949,7 @@ export function WatchPlayer({
             <div className="size-9 animate-spin rounded-full border-2 border-red-500/25 border-t-red-500" />
           </div>
           <p className="mt-5 text-base font-semibold text-white">
-            Menyiapkan tontonanmu
-          </p>
-          <p className="mt-2 max-w-sm text-sm leading-6 text-neutral-400">
-            Kami sedang mengambil link video terbaik. Biasanya hanya sebentar.
+            Menyiapkan Film
           </p>
           <div className="mt-5 h-1.5 w-44 overflow-hidden rounded-full bg-white/10">
             <div className="h-full w-1/2 animate-pulse rounded-full bg-red-500" />
@@ -981,12 +978,7 @@ export function WatchPlayer({
     return (
       <div className="flex aspect-video w-full flex-col items-center justify-center gap-4 rounded-md bg-neutral-950 px-6 text-center ring-1 ring-white/10">
         <p className="text-2xl font-semibold text-white">
-          Belum tersedia untuk internal player
-        </p>
-        <p className="max-w-md text-sm leading-6 text-neutral-400">
-          Sumber video dari upstream untuk judul ini belum cocok diputar tanpa
-          iframe. Judul seperti ini akan disaring dari katalog setelah sync
-          berikutnya.
+          Belum tersedia
         </p>
         <Button onClick={retryLoad}>
           <RotateCw className="size-4" />

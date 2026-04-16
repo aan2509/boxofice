@@ -1,11 +1,16 @@
 import type { MetadataRoute } from "next";
 import {
+  getFallbackTelegramBotSettingsResult,
   getSeoMetadataSnapshot,
   getTelegramBotSettingsSafe,
 } from "@/lib/telegram-bot-settings";
 
 export default async function manifest(): Promise<MetadataRoute.Manifest> {
-  const telegram = await getTelegramBotSettingsSafe();
+  const telegram = await getTelegramBotSettingsSafe().catch(() =>
+    getFallbackTelegramBotSettingsResult(
+      "Database runtime tidak tersedia saat manifest dirender.",
+    ),
+  );
   const seo = getSeoMetadataSnapshot(telegram.settings);
 
   return {

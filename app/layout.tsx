@@ -7,6 +7,7 @@ import { MobileBottomNav } from "@/components/navigation/mobile-bottom-nav";
 import { TelegramAppChrome } from "@/components/telegram/telegram-app-chrome";
 import { TelegramSessionSync } from "@/components/telegram/telegram-session-sync";
 import {
+  getFallbackTelegramBotSettingsResult,
   getSeoMetadataSnapshot,
   getTelegramBotSettingsSafe,
 } from "@/lib/telegram-bot-settings";
@@ -14,7 +15,11 @@ import { USER_SESSION_COOKIE } from "@/lib/user-auth";
 import "./globals.css";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const telegram = await getTelegramBotSettingsSafe();
+  const telegram = await getTelegramBotSettingsSafe().catch(() =>
+    getFallbackTelegramBotSettingsResult(
+      "Database runtime tidak tersedia saat metadata dirender.",
+    ),
+  );
   const seo = getSeoMetadataSnapshot(telegram.settings);
   const appUrl = telegram.runtime.publicAppUrl;
 
