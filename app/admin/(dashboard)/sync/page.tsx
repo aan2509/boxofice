@@ -1,6 +1,7 @@
 import {
   cleanupMovieTitlesFromAdmin,
   hideRedirectMoviesFromAdmin,
+  refreshWebCacheFromAdmin,
   syncMoviesFromAdmin,
 } from "@/app/admin/actions";
 import { AuditRunner } from "@/components/admin/audit-runner";
@@ -91,6 +92,7 @@ type AdminSyncPageProps = {
     unchanged?: string;
     updated?: string;
     upserted?: string;
+    webCache?: string;
     deactivated?: string;
     homeDeactivated?: string;
     homeCreated?: string;
@@ -360,6 +362,31 @@ function RedirectCleanupBanner({
   );
 }
 
+function WebCacheBanner({
+  params,
+}: {
+  params: Awaited<AdminSyncPageProps["searchParams"]>;
+}) {
+  if (!params.webCache) {
+    return null;
+  }
+
+  return (
+    <AdminSurface className="text-sm leading-6 text-neutral-200">
+      {params.webCache === "error" ? (
+        <span className="text-red-200">
+          Refresh cache web gagal: {params.message ?? "terjadi kesalahan"}
+        </span>
+      ) : (
+        <span className="text-emerald-100">
+          {params.message ??
+            "Cache web berhasil direfresh. Halaman user akan mengikuti data terbaru setelah reload berikutnya."}
+        </span>
+      )}
+    </AdminSurface>
+  );
+}
+
 function AuditResultBanner({
   params,
 }: {
@@ -498,6 +525,7 @@ export default async function AdminSyncPage({
       <AuditResultBanner params={params} />
       <TitleCleanupBanner params={params} />
       <RedirectCleanupBanner params={params} />
+      <WebCacheBanner params={params} />
 
       <AdminSurface>
         <p className="text-sm font-semibold text-orange-200">Sinkronisasi feed</p>
@@ -579,6 +607,27 @@ export default async function AdminSyncPage({
               className="h-11 border border-white/10 bg-white/10 text-white hover:bg-white/15"
             >
               Sembunyikan redirect
+            </Button>
+          </form>
+        </div>
+        <div className="mt-6 border-t border-white/10 pt-5">
+          <p className="text-sm font-semibold text-orange-200">Refresh web</p>
+          <h3 className="mt-2 text-xl font-bold text-white">
+            Paksa refresh cache
+          </h3>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-neutral-400">
+            Sesudah sync, audit, atau menyembunyikan judul error, tombol ini
+            akan memaksa route utama seperti home, search, browse, dan detail
+            mengambil data terbaru lebih cepat.
+          </p>
+          <form action={refreshWebCacheFromAdmin} className="mt-4">
+            <input type="hidden" name="redirectTo" value="/admin/sync" />
+            <Button
+              type="submit"
+              variant="secondary"
+              className="h-11 border border-white/10 bg-white/10 text-white hover:bg-white/15"
+            >
+              Refresh cache web
             </Button>
           </form>
         </div>

@@ -336,6 +336,35 @@ export async function hideRedirectMoviesFromAdmin(formData: FormData) {
   redirect(redirectPath);
 }
 
+export async function refreshWebCacheFromAdmin(formData: FormData) {
+  await requireAdminSession();
+  const redirectBasePath = resolveRedirectTarget(formData, "/admin/sync");
+
+  try {
+    revalidatePath("/", "layout");
+    revalidatePath("/");
+    revalidatePath("/search");
+    revalidatePath("/library");
+    revalidatePath("/browse/[slug]", "page");
+    revalidatePath("/movie/[id]", "page");
+    revalidatePath("/movie/source");
+    revalidatePath("/admin");
+    revalidatePath("/admin/sync");
+
+    redirect(
+      `${redirectBasePath}?webCache=ok&message=${encodeURIComponent(
+        "Cache web berhasil direfresh. Halaman user akan mengikuti data terbaru setelah reload berikutnya.",
+      )}`,
+    );
+  } catch (error) {
+    redirect(
+      `${redirectBasePath}?webCache=error&message=${encodeURIComponent(
+        error instanceof Error ? error.message : "Gagal refresh cache web",
+      )}`,
+    );
+  }
+}
+
 export async function auditCatalogFromAdmin(formData: FormData) {
   await requireAdminSession();
   const rawTarget = String(formData.get("target") ?? "");

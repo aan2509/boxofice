@@ -47,20 +47,36 @@ export async function GET(request: NextRequest) {
               },
             },
             select: {
+              description: true,
               id: true,
+              inHome: true,
+              inNew: true,
+              inPopular: true,
               sourceUrl: true,
+              thumbnail: true,
+              title: true,
             },
           })
           .catch(() => [])
       : [];
+    const unsafeSourceUrls = new Set(
+      existingMovies
+        .filter((movie) => isBlockedMovieCandidate(movie))
+        .map((movie) => movie.sourceUrl),
+    );
     const movieIdBySource = new Map(
-      existingMovies.map((movie) => [movie.sourceUrl, movie.id]),
+      existingMovies
+        .filter((movie) => !unsafeSourceUrls.has(movie.sourceUrl))
+        .map((movie) => [movie.sourceUrl, movie.id]),
+    );
+    const visibleMovies = safeMovies.filter(
+      (movie) => !unsafeSourceUrls.has(movie.sourceUrl),
     );
 
     return NextResponse.json(
       {
         fetched: result.fetched,
-        movies: safeMovies.map((movie) => ({
+        movies: visibleMovies.map((movie) => ({
           ...movie,
           movieId: movieIdBySource.get(movie.sourceUrl) ?? null,
         })),

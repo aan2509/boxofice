@@ -32,11 +32,32 @@ type SearchMovie = NormalizedMovieMetadata & {
   movieId?: string | null;
 };
 
-const searchCache = new Map<string, SearchResponse>();
+type CachedSearchEntry = {
+  cachedAt: number;
+  data: SearchResponse;
+};
+
+const SEARCH_CACHE_TTL_MS = 15_000;
+const searchCache = new Map<string, CachedSearchEntry>();
 const quickSearches = ["Action", "Horror", "Korea", "Romance"];
 
 function getCacheKey(query: string, page: number) {
   return `${query.trim().toLowerCase()}::${page}`;
+}
+
+function readSearchCache(key: string) {
+  const entry = searchCache.get(key);
+
+  if (!entry) {
+    return null;
+  }
+
+  if (Date.now() - entry.cachedAt > SEARCH_CACHE_TTL_MS) {
+    searchCache.delete(key);
+    return null;
+  }
+
+  return entry.data;
 }
 
 function syncSearchUrl(query: string, page: number) {
@@ -124,6 +145,26 @@ export function UpstreamSearch({
   const trimmedQuery = query.trim();
 
   React.useEffect(() => {
+    function handleVisibilityRefresh() {
+      if (document.visibilityState === "visible") {
+        searchCache.clear();
+      }
+    }
+
+    function handleWindowFocus() {
+      searchCache.clear();
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityRefresh);
+    window.addEventListener("focus", handleWindowFocus);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityRefresh);
+      window.removeEventListener("focus", handleWindowFocus);
+    };
+  }, []);
+
+  React.useEffect(() => {
     const controller = new AbortController();
     const activeQuery = trimmedQuery;
 
@@ -138,7 +179,7 @@ export function UpstreamSearch({
 
     const timeoutId = window.setTimeout(async () => {
       const cacheKey = getCacheKey(activeQuery, page);
-      const cached = searchCache.get(cacheKey);
+      const cached = readSearchCache(cacheKey);
 
       syncSearchUrl(activeQuery, page);
 
@@ -178,7 +219,10 @@ export function UpstreamSearch({
         }
 
         const nextResult = payload as SearchResponse;
-        searchCache.set(cacheKey, nextResult);
+        searchCache.set(cacheKey, {
+          cachedAt: Date.now(),
+          data: nextResult,
+        });
 
         setResult(nextResult);
         setStatus(nextResult.movies.length ? "ready" : "empty");
