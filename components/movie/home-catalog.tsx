@@ -11,13 +11,11 @@ type HomeCatalogProps = {
   filters: HomepageFilters;
   initialMovies: MovieCard[];
   initialNextOffset: number | null;
-  totalMovies: number;
 };
 
 type CatalogPayload = {
   items?: MovieCard[];
   nextOffset?: number | null;
-  totalMovies?: number;
 };
 
 const PAGE_SIZE = 18;
@@ -43,7 +41,6 @@ export function HomeCatalog({
   filters,
   initialMovies,
   initialNextOffset,
-  totalMovies,
 }: HomeCatalogProps) {
   const [movies, setMovies] = React.useState(initialMovies);
   const [isNearBottom, setIsNearBottom] = React.useState(false);
@@ -187,10 +184,9 @@ export function HomeCatalog({
   }, []);
 
   return (
-    <section className="mx-auto w-full max-w-7xl px-4 pb-28 pt-4 sm:px-8 sm:pb-10 sm:pt-6 lg:px-10">
-
+    <section className="mx-auto w-full max-w-7xl px-4 pb-28 pt-2 sm:px-8 sm:pb-10 sm:pt-4 lg:px-10">
       {movies.length ? (
-        <div className="grid grid-cols-3 gap-x-3 gap-y-1.5 sm:grid-cols-4 sm:gap-x-4 sm:gap-y-4 lg:grid-cols-6">
+        <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 sm:gap-4 lg:grid-cols-6">
           {movies.map((movie) => (
             <MovieCardLink key={movie.id} movie={movie} />
           ))}
@@ -237,10 +233,10 @@ export function HomeCatalog({
       ) : null}
 
       {isNearBottom && !isLoadingMore && nextOffset !== null ? (
-        <div className="mt-4 grid grid-cols-3 gap-x-3 gap-y-2 opacity-60 sm:grid-cols-4 sm:gap-x-4 lg:grid-cols-6">
+        <div className="mt-4 grid grid-cols-3 gap-2.5 opacity-60 sm:grid-cols-4 sm:gap-4 lg:grid-cols-6">
           {Array.from({ length: 3 }).map((_, index) => (
             <div key={index}>
-              <Skeleton className="aspect-[2/3] w-full bg-white/10" />
+              <Skeleton className="aspect-[2/3] w-full rounded-[18px] bg-white/10" />
             </div>
           ))}
         </div>

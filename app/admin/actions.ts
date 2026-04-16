@@ -357,6 +357,8 @@ export async function updateAffiliateProgramSettings(formData: FormData) {
   const redirectBasePath = resolveRedirectTarget(formData, "/admin/settings");
   const rawRate = Number(formData.get("defaultCommissionRate") ?? 0);
   const defaultCommissionRate = Math.trunc(rawRate);
+  const howItWorksContent = readTextField(formData, "howItWorksContent");
+  const rulesContent = readTextField(formData, "rulesContent");
 
   if (!Number.isFinite(defaultCommissionRate) || defaultCommissionRate < 1) {
     redirect(
@@ -367,6 +369,18 @@ export async function updateAffiliateProgramSettings(formData: FormData) {
   if (defaultCommissionRate > 100) {
     redirect(
       `${redirectBasePath}?settings=error&message=${encodeURIComponent("Presentase komisi maksimal 100%.")}`,
+    );
+  }
+
+  if (howItWorksContent.length < 20 || !howItWorksContent.includes("\n")) {
+    redirect(
+      `${redirectBasePath}?settings=error&message=${encodeURIComponent("Cara kerja affiliate perlu diisi minimal satu blok judul dan deskripsi.")}`,
+    );
+  }
+
+  if (rulesContent.length < 20 || !rulesContent.includes("\n")) {
+    redirect(
+      `${redirectBasePath}?settings=error&message=${encodeURIComponent("Aturan affiliate perlu diisi minimal satu blok pertanyaan dan jawaban.")}`,
     );
   }
 
@@ -388,6 +402,8 @@ export async function updateAffiliateProgramSettings(formData: FormData) {
       where: { id: settings.id },
       data: {
         defaultCommissionRate,
+        howItWorksContent,
+        rulesContent,
       },
     });
 

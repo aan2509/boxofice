@@ -14,7 +14,6 @@ import {
 
 import {
   requestAffiliatePayoutAction,
-  recordAffiliateInteractionAction,
   type AffiliateActionState,
 } from "@/app/affiliate/actions";
 import { Button } from "@/components/ui/button";
@@ -287,7 +286,6 @@ export function AffiliateDashboard({
       await navigator.clipboard.writeText(link);
       setCopied(true);
       setShareFeedback("Link affiliate berhasil disalin.");
-      void recordAffiliateInteractionAction("copy_link");
     } catch {
       setShareFeedback("Clipboard belum bisa dipakai di perangkat ini.");
     }
@@ -311,7 +309,6 @@ export function AffiliateDashboard({
       }
 
       setShareFeedback("Link affiliate siap dibagikan.");
-      void recordAffiliateInteractionAction("share_link");
     } catch {
       setShareFeedback("Bagikan link belum bisa dijalankan sekarang.");
     }
@@ -470,9 +467,9 @@ export function AffiliateDashboard({
       <section className="rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(18,18,18,0.92),rgba(8,8,8,0.96))] p-5">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-base font-bold text-white">Aktivitas terbaru</p>
+            <p className="text-base font-bold text-white">Riwayat komisi dan penarikan</p>
             <p className="mt-1 text-sm text-neutral-400">
-              Semua perkembangan affiliate kamu akan muncul di sini.
+              Hanya komisi yang masuk dan proses penarikan yang ditampilkan di sini.
             </p>
           </div>
           <Megaphone className="size-5 text-neutral-500" />
@@ -511,60 +508,7 @@ export function AffiliateDashboard({
                 Belum ada aktivitas
               </p>
               <p className="mt-2 text-sm leading-6 text-neutral-400">
-                Mulai dengan menyalin atau membagikan link affiliate kamu.
-              </p>
-            </div>
-          )}
-        </div>
-      </section>
-
-      <section className="rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(18,18,18,0.92),rgba(8,8,8,0.96))] p-5">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-base font-bold text-white">Riwayat penarikan</p>
-            <p className="mt-1 text-sm text-neutral-400">
-              Status semua pengajuan pencairan affiliate.
-            </p>
-          </div>
-          <ArrowUpRight className="size-5 text-neutral-500" />
-        </div>
-
-        <div className="mt-4 space-y-3">
-          {payouts.length ? (
-            payouts.map((payout) => (
-              <div
-                key={payout.id}
-                className="flex items-center justify-between gap-3 rounded-[18px] border border-white/10 bg-white/[0.04] px-4 py-4"
-              >
-                <div>
-                  <p className="text-sm font-semibold text-white">
-                    {payout.amountLabel}
-                  </p>
-                  <p className="mt-1 text-xs text-neutral-500">
-                    {payout.createdAtLabel}
-                  </p>
-                </div>
-                <span
-                  className={cn(
-                    "rounded-full px-3 py-1 text-[11px] font-semibold ring-1",
-                    payout.statusLabel === "Pending"
-                      ? "bg-yellow-500/10 text-yellow-200 ring-yellow-400/20"
-                      : payout.statusLabel === "Dibayar"
-                        ? "bg-emerald-500/10 text-emerald-200 ring-emerald-400/20"
-                        : "bg-white/5 text-neutral-300 ring-white/10",
-                  )}
-                >
-                  {payout.statusLabel}
-                </span>
-              </div>
-            ))
-          ) : (
-            <div className="rounded-[18px] border border-dashed border-white/10 bg-white/[0.03] px-4 py-8 text-center">
-              <p className="text-sm font-semibold text-white">
-                Belum ada penarikan
-              </p>
-              <p className="mt-2 text-sm leading-6 text-neutral-400">
-                Saat saldo kamu cukup, pengajuan penarikan akan muncul di sini.
+                Komisi yang berhasil masuk dan proses penarikan akan muncul di sini.
               </p>
             </div>
           )}

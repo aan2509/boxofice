@@ -124,6 +124,38 @@ export default async function AdminCommissionPage({
               </div>
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-neutral-300">
+                Konten cara kerja affiliate
+              </label>
+              <textarea
+                name="howItWorksContent"
+                rows={10}
+                defaultValue={affiliateSettings.howItWorksContent}
+                className="mt-2 w-full rounded-[18px] border border-white/10 bg-black/25 px-4 py-4 text-sm leading-7 text-white outline-none placeholder:text-neutral-500"
+              />
+              <p className="mt-2 text-sm leading-6 text-neutral-400">
+                Tulis per blok. Baris pertama jadi judul, baris berikutnya jadi
+                isi. Pisahkan tiap blok dengan satu baris kosong.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-300">
+                Konten aturan affiliate
+              </label>
+              <textarea
+                name="rulesContent"
+                rows={12}
+                defaultValue={affiliateSettings.rulesContent}
+                className="mt-2 w-full rounded-[18px] border border-white/10 bg-black/25 px-4 py-4 text-sm leading-7 text-white outline-none placeholder:text-neutral-500"
+              />
+              <p className="mt-2 text-sm leading-6 text-neutral-400">
+                Formatnya sama: baris pertama pertanyaan, baris berikutnya
+                jawaban, lalu kosongkan satu baris untuk item berikutnya.
+              </p>
+            </div>
+
             <label className="flex items-start gap-3 rounded-[18px] border border-white/10 bg-black/20 p-4">
               <input
                 name="applyToExisting"

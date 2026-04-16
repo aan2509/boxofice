@@ -153,6 +153,8 @@ model AffiliateProgramSettings {
   id                    String   @id @default(uuid())
   slug                  String   @unique @default("default")
   defaultCommissionRate Int      @default(25)
+  howItWorksContent     String   @db.Text
+  rulesContent          String   @db.Text
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 }

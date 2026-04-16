@@ -13,11 +13,31 @@ import {
 
 export const AFFILIATE_MINIMUM_WITHDRAW = 50_000;
 export const DEFAULT_AFFILIATE_COMMISSION_RATE = 25;
+export const DEFAULT_AFFILIATE_HOW_IT_WORKS_CONTENT =
+  "Bagikan link\n" +
+  "Sebarkan deep link Telegram kamu ke grup, channel, WhatsApp, TikTok bio, atau story.\n\n" +
+  "Teman mendaftar\n" +
+  "User baru masuk lewat bot kamu lalu langsung membuka Mini App dengan akun Telegram mereka.\n\n" +
+  "Komisi masuk\n" +
+  "Saat referral berlangganan dan pembayaran sukses, komisi dihitung otomatis.\n\n" +
+  "Tarik saldo\n" +
+  "Saldo yang sudah memenuhi minimum withdrawal bisa langsung diajukan ke admin.";
+export const DEFAULT_AFFILIATE_RULES_CONTENT =
+  "Kapan referral dihitung aktif?\n" +
+  "Referral aktif dihitung dari user referral yang sudah pernah sukses membeli paket minimal satu kali.\n\n" +
+  "Bagaimana komisi dihitung?\n" +
+  "Komisi dihitung dari transaksi VIP yang sudah sukses dibayar oleh user referral.\n\n" +
+  "Kapan saldo bisa ditarik?\n" +
+  "Saldo bisa diajukan setelah mencapai minimum Rp 50.000. Pencairan komisi hanya bisa diajukan jika saldo tersedia sudah mencapai minimum penarikan.\n\n" +
+  "Kalau butuh strategi promosi, mulai dari mana?\n" +
+  "Mulai dari platform yang sudah kamu kuasai, fokus ke short video, potongan adegan menarik, lalu arahkan audiens ke link affiliate kamu dengan CTA yang konsisten.";
 
 type AffiliateProgramSettingsSnapshot = {
   createdAt: Date;
   defaultCommissionRate: number;
+  howItWorksContent: string;
   id: string;
+  rulesContent: string;
   slug: string;
   updatedAt: Date;
 };
@@ -31,6 +51,16 @@ type AffiliateProgramSettingsResult = {
 type AffiliateUser = {
   id: string;
   name: string;
+};
+
+export type AffiliateStepItem = {
+  description: string;
+  title: string;
+};
+
+export type AffiliateAccordionItem = {
+  answer: string;
+  question: string;
 };
 
 function normalizeReferralCode(value: string) {
@@ -147,6 +177,8 @@ export async function ensureAffiliateProgramSettings() {
   return prisma.affiliateProgramSettings.create({
     data: {
       defaultCommissionRate: DEFAULT_AFFILIATE_COMMISSION_RATE,
+      howItWorksContent: DEFAULT_AFFILIATE_HOW_IT_WORKS_CONTENT,
+      rulesContent: DEFAULT_AFFILIATE_RULES_CONTENT,
       slug: "default",
     },
   });
@@ -173,7 +205,9 @@ export async function getAffiliateProgramSettingsSafe(): Promise<AffiliateProgra
       settings: {
         createdAt: new Date(0),
         defaultCommissionRate: DEFAULT_AFFILIATE_COMMISSION_RATE,
+        howItWorksContent: DEFAULT_AFFILIATE_HOW_IT_WORKS_CONTENT,
         id: "affiliate-settings-fallback",
+        rulesContent: DEFAULT_AFFILIATE_RULES_CONTENT,
         slug: "default",
         updatedAt: new Date(0),
       },
@@ -239,8 +273,19 @@ export async function getAffiliateDashboard(user: AffiliateUser) {
     where: { id: profile.id },
     include: {
       activities: {
+        where: {
+          type: {
+            in: [
+              "commission_earned",
+              "payout_requested",
+              "payout_approved",
+              "payout_rejected",
+              "payout_paid",
+            ],
+          },
+        },
         orderBy: { createdAt: "desc" },
-        take: 8,
+        take: 10,
       },
       payoutRequests: {
         orderBy: { createdAt: "desc" },
@@ -281,6 +326,47 @@ export async function getAffiliateDashboard(user: AffiliateUser) {
       },
     },
   });
+}
+
+function parseAffiliateContentBlocks(content: string) {
+  return content
+    .split(/\n\s*\n/g)
+    .map((block) => block.trim())
+    .filter(Boolean)
+    .map((block) => {
+      const [titleLine, ...descriptionLines] = block
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean);
+
+      return {
+        body: descriptionLines.join(" ").trim(),
+        title: titleLine?.trim() ?? "",
+      };
+    })
+    .filter((item) => item.title && item.body);
+}
+
+export function getAffiliateHowItWorksItems(
+  content: string | null | undefined,
+): AffiliateStepItem[] {
+  return parseAffiliateContentBlocks(
+    content?.trim() || DEFAULT_AFFILIATE_HOW_IT_WORKS_CONTENT,
+  ).map((item) => ({
+    description: item.body,
+    title: item.title,
+  }));
+}
+
+export function getAffiliateRuleItems(
+  content: string | null | undefined,
+): AffiliateAccordionItem[] {
+  return parseAffiliateContentBlocks(
+    content?.trim() || DEFAULT_AFFILIATE_RULES_CONTENT,
+  ).map((item) => ({
+    answer: item.body,
+    question: item.title,
+  }));
 }
 
 export async function recordAffiliateInteraction(input: {

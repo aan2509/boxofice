@@ -135,7 +135,7 @@ export default async function Home({ searchParams }: HomePageProps) {
   return (
     <main className="min-h-screen bg-black pb-24 text-white sm:pb-8">
       <header className="fixed inset-x-0 top-0 z-30 border-b border-white/10 bg-[linear-gradient(180deg,rgba(10,10,10,0.96),rgba(10,10,10,0.88))] backdrop-blur-xl">
-        <div className="mx-auto w-full max-w-7xl px-4 pb-3 pt-[calc(env(safe-area-inset-top)+10px)] sm:px-8 lg:px-10">
+        <div className="mx-auto w-full max-w-7xl px-4 pb-2 pt-[calc(env(safe-area-inset-top)+8px)] sm:px-8 lg:px-10">
           <div className="flex items-center gap-3">
             <div className="relative size-11 shrink-0 overflow-hidden rounded-full bg-white/10 ring-1 ring-white/10">
               {user.telegramPhotoUrl ? (
@@ -163,9 +163,9 @@ export default async function Home({ searchParams }: HomePageProps) {
             </div>
           </div>
 
-          <div className="mt-4 space-y-3">
+          <div className="mt-3 space-y-2">
             <div>
-              <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.18em] text-neutral-500">
+              <div className="mb-2 text-[10px] font-medium uppercase tracking-[0.18em] text-neutral-500">
                 Kategori
               </div>
               <div className="-mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden">
@@ -190,12 +190,11 @@ export default async function Home({ searchParams }: HomePageProps) {
         </div>
       </header>
 
-      <div className="pt-[232px] sm:pt-[240px]">
+      <div className="pt-[118px] sm:pt-[126px]">
         <HomeCatalog
           filters={currentFilters}
           initialMovies={catalog.items}
           initialNextOffset={catalog.nextOffset}
-          totalMovies={catalog.totalMovies}
         />
       </div>
     </main>

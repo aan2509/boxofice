@@ -1,14 +1,14 @@
-import {
-  ArrowRight,
-  ChevronRight,
-  CircleDollarSign,
-  MousePointerClick,
-  UserPlus,
-  Wallet,
-} from "lucide-react";
+import { ArrowRight, ChevronRight } from "lucide-react";
 
+import { AffiliateAccordionList } from "@/components/affiliate/affiliate-accordion-list";
 import { AffiliateDashboard } from "@/components/affiliate/affiliate-dashboard";
-import { getAffiliateDashboard, getAffiliateSharePath } from "@/lib/affiliate";
+import {
+  getAffiliateDashboard,
+  getAffiliateHowItWorksItems,
+  getAffiliateProgramSettingsSafe,
+  getAffiliateRuleItems,
+  getAffiliateSharePath,
+} from "@/lib/affiliate";
 import { requireUserSession } from "@/lib/user-auth";
 
 export const dynamic = "force-dynamic";
@@ -57,61 +57,20 @@ function maskAccountNumber(value: string) {
   return `${"*".repeat(Math.max(trimmed.length - 4, 0))}${trimmed.slice(-4)}`;
 }
 
-const affiliateSteps = [
-  {
-    description:
-      "Sebarkan deep link Telegram kamu ke grup, channel, WhatsApp, TikTok bio, atau story.",
-    icon: MousePointerClick,
-    title: "Bagikan link",
-  },
-  {
-    description:
-      "User baru masuk lewat bot kamu lalu langsung membuka Mini App dengan akun Telegram mereka.",
-    icon: UserPlus,
-    title: "Teman mendaftar",
-  },
-  {
-    description:
-      "Saat referral berlangganan dan pembayaran sukses, komisi dihitung otomatis.",
-    icon: CircleDollarSign,
-    title: "Komisi masuk",
-  },
-  {
-    description:
-      "Saldo yang sudah memenuhi minimum withdrawal bisa langsung diajukan ke admin.",
-    icon: Wallet,
-    title: "Tarik saldo",
-  },
-] as const;
-
-const affiliateRules = [
-  {
-    answer:
-      "Referral aktif dihitung dari user referral yang sudah pernah sukses membeli paket minimal satu kali.",
-    question: "Kapan referral dihitung aktif?",
-  },
-  {
-    answer:
-      "Komisi dihitung dari transaksi VIP yang sudah sukses dibayar oleh user referral.",
-    question: "Bagaimana komisi dihitung?",
-  },
-  {
-    answer:
-      "Saldo bisa diajukan setelah mencapai minimum Rp 50.000. Pencairan komisi hanya bisa diajukan jika saldo tersedia sudah mencapai minimum penarikan.",
-    question: "Kapan saldo bisa ditarik?",
-  },
-  {
-    answer:
-      "Mulai dari platform yang sudah kamu kuasai, fokus ke short video, potongan adegan menarik, lalu arahkan audiens ke link affiliate kamu dengan CTA yang konsisten.",
-    question: "Kalau butuh strategi promosi, mulai dari mana?",
-  },
-] as const;
-
 export default async function AffiliatePage() {
   const user = await requireUserSession();
-  const profile = await getAffiliateDashboard(user);
+  const [profile, affiliateSettingsResult] = await Promise.all([
+    getAffiliateDashboard(user),
+    getAffiliateProgramSettingsSafe(),
+  ]);
   const hasPendingPayout = profile.payoutRequests.some(
     (request) => request.status === "pending",
+  );
+  const howItWorksItems = getAffiliateHowItWorksItems(
+    affiliateSettingsResult.settings.howItWorksContent,
+  );
+  const ruleItems = getAffiliateRuleItems(
+    affiliateSettingsResult.settings.rulesContent,
   );
 
   return (
@@ -180,31 +139,12 @@ export default async function AffiliatePage() {
             <ArrowRight className="size-5 text-neutral-500" />
           </div>
 
-          <div className="mt-4 space-y-3">
-            {affiliateSteps.map((step, index) => {
-              const Icon = step.icon;
-
-              return (
-                <div
-                  key={step.title}
-                  className="flex items-start gap-4 rounded-[18px] border border-white/10 bg-white/[0.04] p-4"
-                >
-                  <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(180deg,#ffae4c,#ff6a1a)] text-sm font-bold text-white shadow-[0_10px_24px_rgba(255,122,26,0.28)]">
-                    {index + 1}
-                  </div>
-                  <div>
-                    <p className="flex items-center gap-2 text-sm font-semibold text-white">
-                      <Icon className="size-4 text-orange-300" />
-                      {step.title}
-                    </p>
-                    <p className="mt-1 text-sm leading-6 text-neutral-400">
-                      {step.description}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <AffiliateAccordionList
+            items={howItWorksItems.map((item) => ({
+              answer: item.description,
+              question: item.title,
+            }))}
+          />
         </section>
 
         <section className="rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(20,20,20,0.92),rgba(8,8,8,0.96))] p-5">
@@ -219,21 +159,7 @@ export default async function AffiliatePage() {
             <ChevronRight className="size-5 text-neutral-500" />
           </div>
 
-          <div className="mt-4 space-y-3">
-            {affiliateRules.map((rule) => (
-              <div
-                key={rule.question}
-                className="rounded-[18px] border border-white/10 bg-white/[0.04] p-4"
-              >
-                <p className="text-sm font-semibold text-white">
-                  {rule.question}
-                </p>
-                <p className="mt-2 text-sm leading-6 text-neutral-400">
-                  {rule.answer}
-                </p>
-              </div>
-            ))}
-          </div>
+          <AffiliateAccordionList items={ruleItems} />
         </section>
       </section>
     </main>
