@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { fetchSearch, MovieApiError } from "@/lib/movie-api";
 import { prisma } from "@/lib/prisma";
+import { isBlockedMovieCandidate } from "@/lib/movie-visibility";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,9 +30,10 @@ export async function GET(request: NextRequest) {
 
   try {
     const result = await fetchSearch(query, page);
+    const safeMovies = result.movies.filter((movie) => !isBlockedMovieCandidate(movie));
     const sourceUrls = Array.from(
       new Set(
-        result.movies
+        safeMovies
           .map((movie) => movie.sourceUrl)
           .filter((value): value is string => Boolean(value)),
       ),
@@ -58,7 +60,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         fetched: result.fetched,
-        movies: result.movies.map((movie) => ({
+        movies: safeMovies.map((movie) => ({
           ...movie,
           movieId: movieIdBySource.get(movie.sourceUrl) ?? null,
         })),

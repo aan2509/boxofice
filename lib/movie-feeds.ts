@@ -2,6 +2,10 @@ import { unstable_cache } from "next/cache";
 
 import type { Prisma } from "@/app/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import {
+  excludeBlockedMoviesWhere,
+  isBlockedMovieCandidate,
+} from "@/lib/movie-visibility";
 
 export type MovieCard = {
   id: string;
@@ -113,7 +117,7 @@ function getCatalogWhere(filters: HomepageFilters = {}): Prisma.MovieWhereInput 
   const genre = normalizeFilterValue(filters.genre);
   const year = normalizeFilterValue(filters.year);
 
-  return {
+  return excludeBlockedMoviesWhere({
     OR: [{ inHome: true }, { inPopular: true }, { inNew: true }],
     ...(genre
       ? {
@@ -124,7 +128,7 @@ function getCatalogWhere(filters: HomepageFilters = {}): Prisma.MovieWhereInput 
         }
       : {}),
     ...(year ? { year } : {}),
-  };
+  });
 }
 
 const CATALOG_ORDER_BY = [
@@ -143,7 +147,7 @@ function getFeedWhere(
   const year = normalizeFilterValue(filters.year);
   switch (slug) {
     case "home":
-      return {
+      return excludeBlockedMoviesWhere({
         inHome: true,
         ...(genre
           ? {
@@ -151,12 +155,12 @@ function getFeedWhere(
                 contains: genre,
                 mode: "insensitive",
               },
-            }
-          : {}),
+              }
+            : {}),
         ...(year ? { year } : {}),
-      };
+      });
     case "populer":
-      return {
+      return excludeBlockedMoviesWhere({
         inPopular: true,
         ...(genre
           ? {
@@ -164,12 +168,12 @@ function getFeedWhere(
                 contains: genre,
                 mode: "insensitive",
               },
-            }
-          : {}),
+              }
+            : {}),
         ...(year ? { year } : {}),
-      };
+      });
     case "new":
-      return {
+      return excludeBlockedMoviesWhere({
         inNew: true,
         ...(genre
           ? {
@@ -177,10 +181,10 @@ function getFeedWhere(
                 contains: genre,
                 mode: "insensitive",
               },
-            }
-          : {}),
+              }
+            : {}),
         ...(year ? { year } : {}),
-      };
+      });
   }
 }
 
@@ -257,27 +261,26 @@ const getCatalogPageCached = unstable_cache(
     year?: string | null,
   ): Promise<CatalogPage> => {
     const where = getCatalogWhere({ genre, year });
-    const [totalMovies, items] = await Promise.all([
-      prisma.movie.count({ where }),
-      prisma.movie.findMany({
-        where,
-        orderBy: CATALOG_ORDER_BY,
-        skip: offset,
-        take: limit,
-        select: {
-          id: true,
-          quality: true,
-          rating: true,
-          thumbnail: true,
-          title: true,
-        },
-      }),
-    ]);
+    const items = await prisma.movie.findMany({
+      where,
+      orderBy: CATALOG_ORDER_BY,
+      skip: offset,
+      take: limit + 1,
+      select: {
+        id: true,
+        quality: true,
+        rating: true,
+        thumbnail: true,
+        title: true,
+      },
+    });
+    const hasMore = items.length > limit;
+    const visibleItems = hasMore ? items.slice(0, limit) : items;
 
     return {
-      items,
-      nextOffset: offset + items.length < totalMovies ? offset + items.length : null,
-      totalMovies,
+      items: visibleItems,
+      nextOffset: hasMore ? offset + visibleItems.length : null,
+      totalMovies: offset + visibleItems.length + (hasMore ? 1 : 0),
     };
   },
   ["catalog-page-data"],
@@ -313,7 +316,7 @@ const getHomepageMovieDataCached = unstable_cache(
     const filters = { genre, year };
     const [totalMovies, homeMovies, popularMovies, newMovies] = await Promise.all([
       prisma.movie.count({
-        where: {
+        where: excludeBlockedMoviesWhere({
           ...(genre
             ? {
                 genre: {
@@ -323,7 +326,7 @@ const getHomepageMovieDataCached = unstable_cache(
               }
             : {}),
           ...(year ? { year } : {}),
-        },
+        }),
       }),
       getFeedMoviesCached("home", limit, genre, year),
       getFeedMoviesCached("populer", limit, genre, year),
@@ -379,7 +382,7 @@ export async function getHomepageMovieData(
 const getHomepageFilterOptionsCached = unstable_cache(
   async (): Promise<HomepageFilterOptions> => {
     const movies = await prisma.movie.findMany({
-      where: {
+      where: excludeBlockedMoviesWhere({
         OR: [
           {
             genre: {
@@ -392,7 +395,7 @@ const getHomepageFilterOptionsCached = unstable_cache(
             },
           },
         ],
-      },
+      }),
       select: {
         genre: true,
         year: true,
@@ -501,12 +504,12 @@ const getRelatedMoviesCached = unstable_cache(
       ...(inHome ? [{ inHome: true }] : []),
     ];
     const movies = await prisma.movie.findMany({
-      where: {
+      where: excludeBlockedMoviesWhere({
         id: {
           not: currentMovieId,
         },
         ...(relatedConditions.length ? { OR: relatedConditions } : {}),
-      },
+      }),
       orderBy: { updatedAt: "desc" },
       take: limit,
       select: {
@@ -523,7 +526,7 @@ const getRelatedMoviesCached = unstable_cache(
     }
 
     const fallbackMovies = await prisma.movie.findMany({
-      where: {
+      where: excludeBlockedMoviesWhere({
         id: {
           not: currentMovieId,
         },
@@ -532,7 +535,7 @@ const getRelatedMoviesCached = unstable_cache(
             in: movies.map((movie) => movie.id),
           },
         },
-      },
+      }),
       orderBy: { updatedAt: "desc" },
       take: limit - movies.length,
       select: {
@@ -552,7 +555,7 @@ const getRelatedMoviesCached = unstable_cache(
 
 const getMovieDetailDataCached = unstable_cache(
   async (id: string): Promise<MovieDetailData | null> => {
-    return prisma.movie.findUnique({
+    const movie = await prisma.movie.findUnique({
       where: { id },
       select: {
         actors: true,
@@ -572,6 +575,8 @@ const getMovieDetailDataCached = unstable_cache(
         year: true,
       },
     });
+
+    return movie && !isBlockedMovieCandidate(movie) ? movie : null;
   },
   ["movie-detail-data"],
   { revalidate: FEED_REVALIDATE_SECONDS },
@@ -589,11 +594,11 @@ export async function getMovieDetailData(id: string): Promise<MovieDetailData | 
 const getCinematicBackdropMoviesCached = unstable_cache(
   async (limit: number): Promise<BackdropMovie[]> => {
     return prisma.movie.findMany({
-      where: {
+      where: excludeBlockedMoviesWhere({
         thumbnail: {
           not: null,
         },
-      },
+      }),
       orderBy: { updatedAt: "desc" },
       take: limit,
       select: {

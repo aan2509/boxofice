@@ -1,5 +1,6 @@
 "use client";
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { Play } from "lucide-react";
 
 import { MovieActionButtons } from "@/components/movie/movie-action-buttons";
@@ -16,6 +17,7 @@ type DetailWatchActionsProps = {
   initialSaved: boolean;
   initialOpen?: boolean;
   movieId: string;
+  playerMountId?: string;
   poster?: string | null;
   requiresAuth?: boolean;
   shareText?: string;
@@ -30,6 +32,7 @@ export function DetailWatchActions({
   initialSaved,
   initialOpen = false,
   movieId,
+  playerMountId,
   poster,
   requiresAuth = false,
   shareText,
@@ -42,6 +45,9 @@ export function DetailWatchActions({
   const [immersiveRequestId, setImmersiveRequestId] = React.useState(
     initialOpen ? 1 : 0,
   );
+  const [portalTarget, setPortalTarget] = React.useState<HTMLElement | null>(
+    null,
+  );
 
   const closePlayer = React.useCallback(() => {
     setIsPlayerOpen(false);
@@ -52,6 +58,15 @@ export function DetailWatchActions({
       setIsPlayerOpen(true);
     }
   }, [initialOpen]);
+
+  React.useEffect(() => {
+    if (!playerMountId || typeof document === "undefined") {
+      setPortalTarget(null);
+      return;
+    }
+
+    setPortalTarget(document.getElementById(playerMountId));
+  }, [playerMountId]);
 
   React.useEffect(() => {
     const warmupId = window.setTimeout(() => {
@@ -103,8 +118,23 @@ export function DetailWatchActions({
     setIsPlayerOpen(true);
   }
 
+  const playerContent = isPlayerOpen ? (
+    <div ref={playerRef} className="pt-1">
+      <WatchPlayer
+        key={movieId}
+        autoPlay
+        defaultQuality="480p"
+        immersiveRequestId={immersiveRequestId}
+        movieId={movieId}
+        onRequestClose={closePlayer}
+        poster={poster}
+      />
+    </div>
+  ) : null;
+
   return (
-    <div className="space-y-3">
+    <>
+      <div className="space-y-3">
       <div className="grid gap-2 sm:flex sm:flex-wrap sm:gap-3">
         <div className="sm:w-auto">
           <Button
@@ -133,20 +163,13 @@ export function DetailWatchActions({
           title={title}
         />
       </div>
+      </div>
 
-      {isPlayerOpen ? (
-        <div ref={playerRef} className="pt-1">
-          <WatchPlayer
-            key={movieId}
-            autoPlay
-            defaultQuality="480p"
-            immersiveRequestId={immersiveRequestId}
-            movieId={movieId}
-            onRequestClose={closePlayer}
-            poster={poster}
-          />
-        </div>
-      ) : null}
-    </div>
+      {playerContent
+        ? portalTarget
+          ? createPortal(playerContent, portalTarget)
+          : playerContent
+        : null}
+    </>
   );
 }

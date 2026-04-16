@@ -10,6 +10,7 @@ import {
 } from "@/lib/movie-api";
 import { formatMovieTitle } from "@/lib/movie-title";
 import { prisma } from "@/lib/prisma";
+import { isBlockedMovieCandidate } from "@/lib/movie-visibility";
 
 export type MovieFeedTarget = "home" | "popular" | "new";
 export const DEFAULT_SYNC_PAGE = 1;
@@ -140,6 +141,13 @@ export type TitleCleanupSummary = {
   changed: number;
   scanned: number;
   unchanged: number;
+};
+
+export type RedirectMovieCleanupSummary = {
+  alreadyHidden: number;
+  hidden: number;
+  matched: number;
+  scanned: number;
 };
 
 const FEED_CONFIG: Record<
@@ -559,6 +567,24 @@ export async function syncMovieFeed(
         const nextData = normalizeMovieData(movie, enrichment.detail, existing);
         const hasPlayableStream =
           hasReusableStream || Boolean(enrichment.stream?.sources.length);
+
+        if (
+          isBlockedMovieCandidate({
+            description: nextData.description,
+            sourceUrl: movie.sourceUrl,
+            thumbnail: nextData.thumbnail,
+            title: nextData.title,
+          })
+        ) {
+          summary.skippedUnsupported += 1;
+
+          if (existing) {
+            await hideMovieFromCatalog(existing.id);
+            summary.deactivated += 1;
+          }
+
+          return;
+        }
 
         if (!hasPlayableStream) {
           summary.skippedUnsupported += 1;
@@ -993,6 +1019,76 @@ export async function cleanupMovieTitles(
         },
       });
       summary.changed += 1;
+    }
+
+    cursor = movies[movies.length - 1]?.id;
+
+    if (movies.length < batchSize) {
+      break;
+    }
+  }
+
+  return summary;
+}
+
+export async function hideRedirectMovies(
+  options: { batchSize?: number } = {},
+): Promise<RedirectMovieCleanupSummary> {
+  const batchSize = Math.min(Math.max(options.batchSize ?? 200, 25), 500);
+  let cursor: string | undefined;
+  const summary: RedirectMovieCleanupSummary = {
+    alreadyHidden: 0,
+    hidden: 0,
+    matched: 0,
+    scanned: 0,
+  };
+
+  while (true) {
+    const movies = await prisma.movie.findMany({
+      ...(cursor
+        ? {
+            cursor: {
+              id: cursor,
+            },
+            skip: 1,
+          }
+        : {}),
+      orderBy: {
+        id: "asc",
+      },
+      select: {
+        description: true,
+        id: true,
+        inHome: true,
+        inNew: true,
+        inPopular: true,
+        sourceUrl: true,
+        thumbnail: true,
+        title: true,
+      },
+      take: batchSize,
+    });
+
+    if (!movies.length) {
+      break;
+    }
+
+    for (const movie of movies) {
+      summary.scanned += 1;
+
+      if (!isBlockedMovieCandidate(movie)) {
+        continue;
+      }
+
+      summary.matched += 1;
+
+      if (!movie.inHome && !movie.inPopular && !movie.inNew) {
+        summary.alreadyHidden += 1;
+        continue;
+      }
+
+      await hideMovieFromCatalog(movie.id);
+      summary.hidden += 1;
     }
 
     cursor = movies[movies.length - 1]?.id;

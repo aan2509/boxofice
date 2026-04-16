@@ -17,6 +17,7 @@ import { createPartnerBotWebhookSecret } from "@/lib/telegram-partner-bots";
 import {
   auditMovieCatalog,
   cleanupMovieTitles,
+  hideRedirectMovies,
   resolveSyncPage,
   syncMovieFeed,
   type MovieFeedTarget,
@@ -290,6 +291,43 @@ export async function cleanupMovieTitlesFromAdmin(formData: FormData) {
       message:
         error instanceof Error ? error.message : "Gagal membersihkan judul",
       titleCleanup: "error",
+    });
+
+    redirectPath = `${redirectBasePath}?${params.toString()}`;
+  }
+
+  redirect(redirectPath);
+}
+
+export async function hideRedirectMoviesFromAdmin(formData: FormData) {
+  await requireAdminSession();
+  const redirectBasePath = resolveRedirectTarget(formData, "/admin/sync");
+
+  let redirectPath = `${redirectBasePath}?redirectCleanup=ok`;
+
+  try {
+    const summary = await hideRedirectMovies();
+    const params = new URLSearchParams({
+      redirectCleanup: "ok",
+      redirectHidden: String(summary.hidden),
+      redirectAlreadyHidden: String(summary.alreadyHidden),
+      redirectMatched: String(summary.matched),
+      redirectScanned: String(summary.scanned),
+    });
+
+    revalidatePath("/");
+    revalidatePath("/admin");
+    revalidatePath("/admin/sync");
+    revalidatePath("/browse/home");
+    revalidatePath("/browse/populer");
+    revalidatePath("/browse/new");
+    revalidatePath("/search");
+    redirectPath = `${redirectBasePath}?${params.toString()}`;
+  } catch (error) {
+    const params = new URLSearchParams({
+      message:
+        error instanceof Error ? error.message : "Gagal menyembunyikan judul redirect",
+      redirectCleanup: "error",
     });
 
     redirectPath = `${redirectBasePath}?${params.toString()}`;

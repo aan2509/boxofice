@@ -23,6 +23,7 @@ type SearchResponse = {
 type SearchStatus = "idle" | "loading" | "ready" | "empty" | "error";
 
 type UpstreamSearchProps = {
+  initialBlockedNotice?: boolean;
   initialQuery?: string;
   initialPage?: number;
 };
@@ -104,6 +105,7 @@ function ResultCard({ movie }: { movie: SearchMovie }) {
 }
 
 export function UpstreamSearch({
+  initialBlockedNotice = false,
   initialPage = 1,
   initialQuery = "",
 }: UpstreamSearchProps) {
@@ -113,6 +115,9 @@ export function UpstreamSearch({
   const [isFetching, setIsFetching] = React.useState(false);
   const [status, setStatus] = React.useState<SearchStatus>(
     initialQuery.trim().length >= 2 ? "loading" : "idle",
+  );
+  const [showBlockedNotice, setShowBlockedNotice] = React.useState(
+    initialBlockedNotice,
   );
   const [error, setError] = React.useState<string | null>(null);
   const [retryCount, setRetryCount] = React.useState(0);
@@ -202,6 +207,10 @@ export function UpstreamSearch({
   }, [page, result?.movies.length, retryCount, trimmedQuery]);
 
   function updateQuery(nextQuery: string) {
+    if (showBlockedNotice) {
+      setShowBlockedNotice(false);
+    }
+
     setQuery(nextQuery);
     setPage(1);
   }
@@ -276,6 +285,13 @@ export function UpstreamSearch({
           </div>
         </div>
       </div>
+
+      {showBlockedNotice ? (
+        <div className="mt-4 rounded-md border border-amber-400/20 bg-amber-500/10 px-4 py-3 text-sm leading-6 text-amber-100">
+          Beberapa hasil upstream ternyata hanya halaman pengalihan ke situs lain.
+          Judul seperti itu sekarang kami sembunyikan supaya kamu tidak nyasar.
+        </div>
+      ) : null}
 
       <div className="mt-6 flex min-h-6 items-center justify-between gap-3">
         <div>

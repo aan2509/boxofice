@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { fetchDetail } from "@/lib/movie-api";
 import { formatMovieTitle } from "@/lib/movie-title";
 import { prisma } from "@/lib/prisma";
+import { isBlockedMovieCandidate } from "@/lib/movie-visibility";
 
 export const dynamic = "force-dynamic";
 
@@ -28,16 +29,38 @@ export default async function MovieSourcePage({
 
   const existing = await prisma.movie.findUnique({
     where: { sourceUrl },
-    select: { id: true },
+    select: {
+      description: true,
+      id: true,
+      sourceUrl: true,
+      thumbnail: true,
+      title: true,
+    },
   });
 
   if (existing) {
+    if (isBlockedMovieCandidate(existing)) {
+      redirect("/search?blocked=1");
+    }
+
     redirect(`/movie/${existing.id}`);
   }
 
   const detail = await fetchDetail(sourceUrl, { revalidate: 1800 }).catch(
     () => null,
   );
+
+  if (
+    detail &&
+    isBlockedMovieCandidate({
+      description: detail.synopsis,
+      sourceUrl: detail.sourceUrl,
+      thumbnail: detail.poster,
+      title: detail.title,
+    })
+  ) {
+    redirect("/search?blocked=1");
+  }
 
   const movie = await prisma.movie.upsert({
     where: { sourceUrl },

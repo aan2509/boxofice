@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 
 type SearchPageProps = {
   searchParams: Promise<{
+    blocked?: string;
     page?: string;
     q?: string;
   }>;
@@ -26,6 +27,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   return (
     <main className="min-h-screen bg-black text-white">
       <UpstreamSearch
+        initialBlockedNotice={params.blocked === "1"}
         initialPage={parsePage(params.page)}
         initialQuery={params.q ?? ""}
       />

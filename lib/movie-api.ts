@@ -1,4 +1,5 @@
 import { formatMovieTitle } from "@/lib/movie-title";
+import { isBlockedMovieCandidate } from "@/lib/movie-visibility";
 
 const BASE_URL = "https://api.sonzaix.indevs.in";
 
@@ -243,7 +244,7 @@ export function normalizeMovieMetadata(
     return null;
   }
 
-  return {
+  const normalizedMovie = {
     sourceUrl,
     title: formatMovieTitle(title, { sourceUrl, year }),
     thumbnail: getString(value, ["thumbnail", "poster", "image", "cover"]),
@@ -254,6 +255,12 @@ export function normalizeMovieMetadata(
     quality: getString(value, ["quality", "resolution"]),
     year,
   };
+
+  if (isBlockedMovieCandidate(normalizedMovie)) {
+    return null;
+  }
+
+  return normalizedMovie;
 }
 
 function normalizeMovieListResponse(value: unknown): MovieListResult {

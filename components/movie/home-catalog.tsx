@@ -18,7 +18,8 @@ type CatalogPayload = {
   nextOffset?: number | null;
 };
 
-const PAGE_SIZE = 18;
+const PAGE_SIZE = 24;
+const prefetchedCatalogPages = new Map<string, CatalogPayload>();
 
 function buildCatalogUrl(filters: HomepageFilters, offset: number) {
   const params = new URLSearchParams({
@@ -50,6 +51,7 @@ export function HomeCatalog({
   const [isLoadingMore, setIsLoadingMore] = React.useState(false);
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const abortControllerRef = React.useRef<AbortController | null>(null);
+  const prefetchAbortControllerRef = React.useRef<AbortController | null>(null);
   const isLoadingMoreRef = React.useRef(false);
   const nextOffsetRef = React.useRef<number | null>(initialNextOffset);
   const sentinelRef = React.useRef<HTMLDivElement | null>(null);
@@ -57,6 +59,54 @@ export function HomeCatalog({
   React.useEffect(() => {
     nextOffsetRef.current = nextOffset;
   }, [nextOffset]);
+
+  const getCatalogRequestKey = React.useCallback(
+    (offset: number) => buildCatalogUrl(filters, offset),
+    [filters],
+  );
+
+  const prefetchNextPage = React.useCallback(
+    async (offset: number | null) => {
+      if (offset === null) {
+        return;
+      }
+
+      const requestKey = getCatalogRequestKey(offset);
+
+      if (prefetchedCatalogPages.has(requestKey)) {
+        return;
+      }
+
+      prefetchAbortControllerRef.current?.abort();
+      const controller = new AbortController();
+      prefetchAbortControllerRef.current = controller;
+
+      try {
+        const response = await fetch(requestKey, {
+          credentials: "same-origin",
+          signal: controller.signal,
+        });
+        const payload = (await response.json().catch(() => null)) as
+          | CatalogPayload
+          | null;
+
+        if (!response.ok || !payload) {
+          return;
+        }
+
+        prefetchedCatalogPages.set(requestKey, payload);
+      } catch {
+        if (controller.signal.aborted) {
+          return;
+        }
+      } finally {
+        if (prefetchAbortControllerRef.current === controller) {
+          prefetchAbortControllerRef.current = null;
+        }
+      }
+    },
+    [getCatalogRequestKey],
+  );
 
   const loadMore = React.useCallback(async () => {
     if (isLoadingMoreRef.current || nextOffsetRef.current === null) {
@@ -75,17 +125,26 @@ export function HomeCatalog({
     abortControllerRef.current?.abort();
     const controller = new AbortController();
     abortControllerRef.current = controller;
+    const requestKey = getCatalogRequestKey(currentOffset);
 
     try {
-      const response = await fetch(buildCatalogUrl(filters, currentOffset), {
-        credentials: "same-origin",
-        signal: controller.signal,
-      });
-      const payload = (await response.json().catch(() => null)) as
-        | CatalogPayload
-        | null;
+      let payload = prefetchedCatalogPages.get(requestKey) ?? null;
+      let responseOk = true;
 
-      if (!response.ok) {
+      if (payload) {
+        prefetchedCatalogPages.delete(requestKey);
+      } else {
+        const response = await fetch(requestKey, {
+          credentials: "same-origin",
+          signal: controller.signal,
+        });
+        payload = (await response.json().catch(() => null)) as
+          | CatalogPayload
+          | null;
+        responseOk = response.ok;
+      }
+
+      if (!responseOk) {
         throw new Error(
           payload && "error" in payload && typeof payload.error === "string"
             ? payload.error
@@ -111,6 +170,7 @@ export function HomeCatalog({
         return merged;
       });
       setNextOffset(payload?.nextOffset ?? null);
+      void prefetchNextPage(payload?.nextOffset ?? null);
 
       if (appendedCount > 0) {
         triggerHaptic("light");
@@ -133,17 +193,20 @@ export function HomeCatalog({
       isLoadingMoreRef.current = false;
       setIsLoadingMore(false);
     }
-  }, [filters]);
+  }, [getCatalogRequestKey, prefetchNextPage]);
 
   React.useEffect(() => {
     abortControllerRef.current?.abort();
+    prefetchAbortControllerRef.current?.abort();
     setMovies(initialMovies);
     setNextOffset(initialNextOffset);
     setLoadError(null);
     setIsLoadingMore(false);
     isLoadingMoreRef.current = false;
     nextOffsetRef.current = initialNextOffset;
-  }, [initialMovies, initialNextOffset]);
+    prefetchedCatalogPages.clear();
+    void prefetchNextPage(initialNextOffset);
+  }, [initialMovies, initialNextOffset, prefetchNextPage]);
 
   React.useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -180,6 +243,7 @@ export function HomeCatalog({
   React.useEffect(() => {
     return () => {
       abortControllerRef.current?.abort();
+      prefetchAbortControllerRef.current?.abort();
     };
   }, []);
 

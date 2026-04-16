@@ -29,6 +29,7 @@ import {
 } from "@/lib/telegram-miniapp";
 import { getCurrentUserSession } from "@/lib/user-auth";
 import { getVipProgramSettingsSafe, getVipStatus } from "@/lib/vip";
+import { isBlockedMovieCandidate } from "@/lib/movie-visibility";
 
 export const dynamic = "force-dynamic";
 
@@ -203,6 +204,10 @@ export default async function MoviePage({ params, searchParams }: MoviePageProps
   if (!movie) {
     notFound();
   }
+
+  if (isBlockedMovieCandidate(movie)) {
+    notFound();
+  }
   const incomingReferralCode = extractAffiliateCodeFromStartParam(
     query.ref ??
       query.start_param ??
@@ -288,6 +293,7 @@ export default async function MoviePage({ params, searchParams }: MoviePageProps
         authStartParam,
       )
     : null;
+  const playerMountId = `movie-player-${movie.id}`;
 
   return (
     <main className="min-h-screen bg-black text-white">
@@ -308,13 +314,15 @@ export default async function MoviePage({ params, searchParams }: MoviePageProps
 
         <div className="relative z-10 mx-auto flex min-h-[76svh] w-full max-w-7xl flex-col justify-end px-4 pb-6 pt-[calc(env(safe-area-inset-top)+28px)] sm:min-h-[92svh] sm:px-8 sm:pb-10 sm:pt-[calc(env(safe-area-inset-top)+48px)] lg:px-10">
           <div className="max-w-3xl space-y-3 sm:space-y-5">
-            <div className="rounded-[24px] border border-white/10 bg-black/10 p-3 shadow-[0_16px_40px_rgba(0,0,0,0.28)] backdrop-blur-[2px] sm:max-w-2xl sm:bg-transparent sm:p-0 sm:shadow-none sm:backdrop-blur-0">
+            <div className="pt-4 sm:pt-6">
+              <div className="rounded-[24px] border border-white/10 bg-black/10 p-3 shadow-[0_16px_40px_rgba(0,0,0,0.28)] backdrop-blur-[2px] sm:max-w-2xl sm:bg-transparent sm:p-0 sm:shadow-none sm:backdrop-blur-0">
               <DetailWatchActions
                 authBotChatUrl={authBotChatUrl}
                 authMiniAppUrl={authMiniAppUrl}
                 initialSaved={Boolean(favorite)}
                 initialOpen={Boolean(user) && shouldOpenPlayer}
                 movieId={movie.id}
+                playerMountId={playerMountId}
                 poster={poster}
                 requiresAuth={!user}
                 shareText={shareDescription}
@@ -322,6 +330,7 @@ export default async function MoviePage({ params, searchParams }: MoviePageProps
                 telegramShareUrl={telegramShareUrl}
                 title={movie.title}
               />
+              </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
@@ -372,6 +381,7 @@ export default async function MoviePage({ params, searchParams }: MoviePageProps
 
       <section className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-6 pt-3 sm:px-8 sm:pb-8 sm:pt-5 lg:px-10">
         <div className="max-w-3xl space-y-5 sm:space-y-6">
+          <div id={playerMountId} className="scroll-mt-24" />
           <SynopsisAccordion text={fallbackSynopsis} />
           <MovieCredits actors={movie.actors} directors={movie.directors} />
         </div>

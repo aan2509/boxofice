@@ -1,5 +1,6 @@
 import {
   cleanupMovieTitlesFromAdmin,
+  hideRedirectMoviesFromAdmin,
   syncMoviesFromAdmin,
 } from "@/app/admin/actions";
 import { AuditRunner } from "@/components/admin/audit-runner";
@@ -58,6 +59,11 @@ type AdminSyncPageProps = {
     newUpdated?: string;
     page?: string;
     pages?: string;
+    redirectAlreadyHidden?: string;
+    redirectCleanup?: string;
+    redirectHidden?: string;
+    redirectMatched?: string;
+    redirectScanned?: string;
     popularDeactivated?: string;
     popularCreated?: string;
     popularErrors?: string;
@@ -321,6 +327,39 @@ function TitleCleanupBanner({
   );
 }
 
+function RedirectCleanupBanner({
+  params,
+}: {
+  params: Awaited<AdminSyncPageProps["searchParams"]>;
+}) {
+  if (!params.redirectCleanup) {
+    return null;
+  }
+
+  return (
+    <AdminSurface className="text-sm leading-6 text-neutral-200">
+      {params.redirectCleanup === "error" ? (
+        <span className="text-red-200">
+          Bersihkan judul redirect gagal:{" "}
+          {params.message ?? "terjadi kesalahan"}
+        </span>
+      ) : (
+        <div className="space-y-2">
+          <p className="font-semibold text-white">
+            Judul redirect sudah dirapikan dari katalog.
+          </p>
+          <p className="text-xs leading-5 text-neutral-400">
+            Dipindai: {params.redirectScanned ?? "0"} · Terdeteksi redirect:{" "}
+            {params.redirectMatched ?? "0"} · Baru disembunyikan:{" "}
+            {params.redirectHidden ?? "0"} · Sudah tersembunyi:{" "}
+            {params.redirectAlreadyHidden ?? "0"}.
+          </p>
+        </div>
+      )}
+    </AdminSurface>
+  );
+}
+
 function AuditResultBanner({
   params,
 }: {
@@ -458,6 +497,7 @@ export default async function AdminSyncPage({
       <SyncResultBanner params={params} />
       <AuditResultBanner params={params} />
       <TitleCleanupBanner params={params} />
+      <RedirectCleanupBanner params={params} />
 
       <AdminSurface>
         <p className="text-sm font-semibold text-orange-200">Sinkronisasi feed</p>
@@ -518,6 +558,30 @@ export default async function AdminSyncPage({
             Bersihkan judul
           </Button>
         </form>
+        <div className="mt-6 border-t border-white/10 pt-5">
+          <p className="text-sm font-semibold text-orange-200">
+            Pagar redirect
+          </p>
+          <h3 className="mt-2 text-xl font-bold text-white">
+            Sembunyikan judul redirect
+          </h3>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-neutral-400">
+            Rapikan judul lama yang ternyata hanya landing page pengalihan,
+            misalnya pola seperti “Anda akan dialihkan ke Nontondrama”.
+            Datanya tidak dihapus, hanya disembunyikan dari katalog supaya user
+            tidak terjebak.
+          </p>
+          <form action={hideRedirectMoviesFromAdmin} className="mt-4">
+            <input type="hidden" name="redirectTo" value="/admin/sync" />
+            <Button
+              type="submit"
+              variant="secondary"
+              className="h-11 border border-white/10 bg-white/10 text-white hover:bg-white/15"
+            >
+              Sembunyikan redirect
+            </Button>
+          </form>
+        </div>
       </AdminSurface>
 
       <AdminSurface>
