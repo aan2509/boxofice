@@ -1075,7 +1075,7 @@ export function WatchPlayer({
         />
         <div
           className={cn(
-            "absolute inset-x-0 top-0 z-20 transition-opacity duration-300",
+            "pointer-events-none absolute inset-x-0 top-0 z-20 transition-opacity duration-300",
             !isImmersive || showChrome
               ? "opacity-100"
               : "pointer-events-none opacity-0",
@@ -1088,7 +1088,7 @@ export function WatchPlayer({
                 type="button"
                 onClick={closePlayer}
                 data-haptic="medium"
-                className="inline-flex h-11 items-center gap-2 rounded-full border border-white/10 bg-black/65 px-4 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(0,0,0,0.38)] backdrop-blur"
+                className="pointer-events-auto inline-flex h-11 items-center gap-2 rounded-full border border-white/10 bg-black/65 px-4 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(0,0,0,0.38)] backdrop-blur"
               >
                 <Minimize className="size-4" />
                 Tutup
@@ -1099,7 +1099,7 @@ export function WatchPlayer({
 
             <div className="flex max-w-[calc(100%-4rem)] flex-wrap justify-end gap-2">
               {sources.length > 1 ? (
-                <div className="flex max-w-full gap-1 overflow-x-auto rounded-full border border-white/10 bg-black/65 p-1 backdrop-blur [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <div className="pointer-events-auto flex max-w-full gap-1 overflow-x-auto rounded-full border border-white/10 bg-black/65 p-1 backdrop-blur [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   {sources.map((source) => (
                     <button
                       key={source.url}
@@ -1124,7 +1124,7 @@ export function WatchPlayer({
                   type="button"
                   onClick={toggleFullscreen}
                   data-haptic="medium"
-                  className="inline-flex h-11 items-center gap-2 rounded-full border border-white/10 bg-black/65 px-4 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(0,0,0,0.32)] backdrop-blur"
+                  className="pointer-events-auto inline-flex h-11 items-center gap-2 rounded-full border border-white/10 bg-black/65 px-4 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(0,0,0,0.32)] backdrop-blur"
                 >
                   <Expand className="size-4" />
                   Layar penuh
@@ -1137,8 +1137,8 @@ export function WatchPlayer({
         {isImmersive ? (
           <div
             className={cn(
-              "absolute inset-x-0 bottom-0 z-20 transition-opacity duration-300",
-              showChrome ? "opacity-100" : "pointer-events-none opacity-0",
+              "pointer-events-none absolute inset-x-0 bottom-0 z-20 transition-opacity duration-300",
+              showChrome ? "opacity-100" : "opacity-0",
             )}
           >
             <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
