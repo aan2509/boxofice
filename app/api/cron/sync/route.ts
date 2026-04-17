@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { getCronAuthorizationError } from "@/lib/cron-route";
 import {
   resolveSyncPage,
   resolveSyncPages,
@@ -10,27 +11,8 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function getAuthorizationError(request: NextRequest): NextResponse | null {
-  const secret = process.env.CRON_SECRET;
-
-  if (!secret) {
-    return NextResponse.json(
-      { error: "CRON_SECRET is not configured" },
-      { status: 500 },
-    );
-  }
-
-  const authorization = request.headers.get("authorization");
-
-  if (authorization !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  return null;
-}
-
 export async function GET(request: NextRequest) {
-  const authorizationError = getAuthorizationError(request);
+  const authorizationError = getCronAuthorizationError(request);
 
   if (authorizationError) {
     return authorizationError;
