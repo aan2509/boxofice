@@ -224,7 +224,6 @@ export function WatchPlayer({
   const [failedSourceUrls, setFailedSourceUrls] = React.useState<string[]>([]);
   const [isImmersive, setIsImmersive] = React.useState(false);
   const [isPlaying, setIsPlaying] = React.useState(false);
-  const [isPortraitViewport, setIsPortraitViewport] = React.useState(false);
   const [previewEnded, setPreviewEnded] = React.useState(false);
   const [showChrome, setShowChrome] = React.useState(true);
   const [showRotateGate, setShowRotateGate] = React.useState(false);
@@ -785,25 +784,6 @@ export function WatchPlayer({
   }, [clearHideChromeTimer, revealChrome, scheduleHideChrome, sources.length]);
 
   React.useEffect(() => {
-    function handleViewportChange() {
-      if (typeof window === "undefined") {
-        return;
-      }
-
-      setIsPortraitViewport(window.matchMedia("(orientation: portrait)").matches);
-    }
-
-    handleViewportChange();
-    window.addEventListener("resize", handleViewportChange);
-    window.addEventListener("orientationchange", handleViewportChange);
-
-    return () => {
-      window.removeEventListener("resize", handleViewportChange);
-      window.removeEventListener("orientationchange", handleViewportChange);
-    };
-  }, []);
-
-  React.useEffect(() => {
     if (immersiveRequestId <= 0) {
       return;
     }
@@ -1010,7 +990,7 @@ export function WatchPlayer({
     setRetryCount((value) => value + 1);
   }
 
-  const shouldRotateImmersive = isImmersive && isPortraitViewport;
+  const shouldRotateImmersive = false;
 
   if (!stream && !error) {
     return (
@@ -1165,18 +1145,18 @@ export function WatchPlayer({
           </div>
         ) : null}
         {showRotateGate && !previewEnded ? (
-          <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/72 px-4">
-            <div className="w-full max-w-md rounded-[26px] border border-white/10 bg-[linear-gradient(180deg,rgba(20,20,20,0.96),rgba(8,8,8,0.98))] p-5 text-center shadow-[0_24px_80px_rgba(0,0,0,0.55)] backdrop-blur">
+          <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/72 px-3">
+            <div className="w-full max-w-[22rem] rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,rgba(20,20,20,0.96),rgba(8,8,8,0.98))] p-4 text-center shadow-[0_24px_80px_rgba(0,0,0,0.55)] backdrop-blur">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-200">
                 Sebelum mulai nonton
               </p>
-              <h3 className="mt-3 text-2xl font-bold text-white">
+              <h3 className="mt-3 text-xl font-bold text-white">
                 Aktifkan auto-rotate bila bisa
               </h3>
               <p className="mt-3 text-sm leading-6 text-neutral-300">
-                Saat mode fullscreen, film landscape akan tampil paling pas jika auto-rotate aktif. Kamu tetap bisa lanjut nonton sekarang.
+                Tombol fullscreen tidak memutar layar otomatis. Jika ingin layar landscape, aktifkan auto-rotate atau putar HP sendiri. Kamu tetap bisa lanjut nonton sekarang.
               </p>
-              <div className="mt-5 grid gap-2 sm:grid-cols-2">
+              <div className="mt-4 grid gap-2 sm:grid-cols-2">
                 <Button
                   type="button"
                   variant="secondary"
