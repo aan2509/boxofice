@@ -407,6 +407,7 @@ function withDerivedLinks(
 
   return {
     ...derivedSettings,
+    publicAppUrl: runtime.publicAppUrl,
     inlineButtons: normalizeInlineButtons(
       settings.inlineButtons,
       buildLegacyInlineButtonsFromSettings(derivedSettings),
