@@ -141,6 +141,14 @@ export default async function ProfilePage() {
                       : "-"}
                   </p>
                 </div>
+                <Button
+                  asChild
+                  className="mt-4 h-11 bg-red-600 text-white hover:bg-red-500"
+                >
+                  <Link href="/vip" prefetch>
+                    Perpanjang VIP
+                  </Link>
+                </Button>
               </>
             ) : (
               <>
