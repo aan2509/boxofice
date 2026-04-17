@@ -2,6 +2,7 @@ import {
   AdminMetricCard,
   AdminSurface,
 } from "@/components/admin/admin-surface";
+import { CopyCodeBlock } from "@/components/admin/copy-code-block";
 import { Button } from "@/components/ui/button";
 import {
   deletePartnerBotFromAdmin,
@@ -84,25 +85,6 @@ function OwnerSelect({
           );
         })}
       </select>
-    </div>
-  );
-}
-
-function CodeBlock({
-  code,
-  title,
-}: {
-  code: string;
-  title: string;
-}) {
-  return (
-    <div className="rounded-[18px] border border-white/10 bg-black/30 p-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">
-        {title}
-      </p>
-      <pre className="mt-3 overflow-x-auto whitespace-pre-wrap break-all text-xs leading-6 text-neutral-200">
-        {code}
-      </pre>
     </div>
   );
 }
@@ -205,7 +187,11 @@ export default async function AdminPartnerBotsPage({
 
       <div className="space-y-5">
         {partnerBots.map((partnerBot) => {
-          const setWebhookCommand = `curl -X POST "https://api.telegram.org/bot${partnerBot.botToken}/setWebhook" \\\n+  -d "url=${partnerBot.webhookUrl}" \\\n+  -d "secret_token=${partnerBot.webhookSecret}"`;
+          const setWebhookCommand = [
+            `curl -X POST "https://api.telegram.org/bot${partnerBot.botToken}/setWebhook" \\`,
+            `  -d "url=${partnerBot.webhookUrl}" \\`,
+            `  -d "secret_token=${partnerBot.webhookSecret}"`,
+          ].join("\n");
           const deleteWebhookCommand = `curl "https://api.telegram.org/bot${partnerBot.botToken}/deleteWebhook"`;
 
           return (
@@ -327,25 +313,25 @@ export default async function AdminPartnerBotsPage({
                 </div>
 
                 <div className="space-y-4">
-                  <CodeBlock
+                  <CopyCodeBlock
                     title="Webhook URL"
                     code={partnerBot.webhookUrl}
                   />
-                  <CodeBlock
+                  <CopyCodeBlock
                     title="Command setWebhook"
                     code={setWebhookCommand}
                   />
-                  <CodeBlock
+                  <CopyCodeBlock
                     title="Command deleteWebhook"
                     code={deleteWebhookCommand}
                   />
                   {partnerBot.links ? (
                     <>
-                      <CodeBlock
+                      <CopyCodeBlock
                         title="Deep link partner"
                         code={partnerBot.links.startChatUrl}
                       />
-                      <CodeBlock
+                      <CopyCodeBlock
                         title="Mini App partner"
                         code={partnerBot.links.miniAppUrl}
                       />

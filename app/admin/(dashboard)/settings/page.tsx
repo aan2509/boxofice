@@ -2,6 +2,7 @@ import {
   AdminMetricCard,
   AdminSurface,
 } from "@/components/admin/admin-surface";
+import { CopyCodeBlock } from "@/components/admin/copy-code-block";
 import { Button } from "@/components/ui/button";
 import { updateTelegramBotSettings } from "@/app/admin/actions";
 import { getTelegramBotSettingsSafe } from "@/lib/telegram-bot-settings";
@@ -64,7 +65,11 @@ export default async function AdminSettingsPage({
   const telegramSettings = telegramSettingsResult.settings;
   const telegramRuntime = telegramSettingsResult.runtime;
   const webhookUrl = `${telegramRuntime.publicAppUrl}/api/telegram/webhook`;
-  const setWebhookCommand = `curl -X POST "https://api.telegram.org/bot${telegramRuntime.botToken}/setWebhook" \\\n  -d "url=${webhookUrl}" \\\n  -d "secret_token=${telegramRuntime.webhookSecret}"`;
+  const setWebhookCommand = [
+    `curl -X POST "https://api.telegram.org/bot${telegramRuntime.botToken}/setWebhook" \\`,
+    `  -d "url=${webhookUrl}" \\`,
+    `  -d "secret_token=${telegramRuntime.webhookSecret}"`,
+  ].join("\n");
   const deleteWebhookCommand = `curl "https://api.telegram.org/bot${telegramRuntime.botToken}/deleteWebhook"`;
 
   return (
@@ -343,15 +348,15 @@ export default async function AdminSettingsPage({
               Command ini selalu mengikuti nilai aktif. Database akan dipakai
               lebih dulu, env jadi cadangan.
             </p>
-            <div className="mt-4 rounded-[20px] border border-white/10 bg-black/30 p-4">
-              <pre className="overflow-x-auto whitespace-pre-wrap text-xs leading-6 text-neutral-200">
-                {setWebhookCommand}
-              </pre>
-            </div>
-            <div className="mt-4 rounded-[20px] border border-white/10 bg-black/30 p-4">
-              <pre className="overflow-x-auto whitespace-pre-wrap text-xs leading-6 text-neutral-200">
-                {deleteWebhookCommand}
-              </pre>
+            <div className="mt-4 space-y-4">
+              <CopyCodeBlock
+                title="Command setWebhook"
+                code={setWebhookCommand}
+              />
+              <CopyCodeBlock
+                title="Command deleteWebhook"
+                code={deleteWebhookCommand}
+              />
             </div>
           </AdminSurface>
         </div>
