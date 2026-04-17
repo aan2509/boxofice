@@ -82,6 +82,13 @@ function normalizeQuality(value: string | undefined) {
   return value?.toLowerCase().replace(/\s+/g, "").replace(/p$/, "");
 }
 
+function isAutoSource(source: CachedStreamSource) {
+  const label = normalizeQuality(source.label);
+  const quality = normalizeQuality(source.quality);
+
+  return label === "auto" || quality === "auto";
+}
+
 function chooseDefaultSource(
   sources: CachedStreamSource[],
   defaultQuality: string | undefined,
@@ -90,12 +97,7 @@ function chooseDefaultSource(
     return null;
   }
 
-  const autoSource = sources.find((source) => {
-    const label = normalizeQuality(source.label);
-    const quality = normalizeQuality(source.quality);
-
-    return label === "auto" || quality === "auto";
-  });
+  const autoSource = sources.find((source) => isAutoSource(source));
 
   if (autoSource) {
     return autoSource;
@@ -316,6 +318,10 @@ export function WatchPlayer({
     sources.find((source) => source.url === selectedSourceUrl) ??
     chooseDefaultSource(sources, defaultQuality) ??
     null;
+  const manualSources = React.useMemo(
+    () => sources.filter((source) => !isAutoSource(source)),
+    [sources],
+  );
 
   const clearHideChromeTimer = React.useCallback(() => {
     if (hideChromeTimeoutRef.current !== null) {
@@ -1183,38 +1189,67 @@ export function WatchPlayer({
         ) : null}
         {showRotateGate && !previewEnded ? (
           <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/72 px-3">
-            <div className="w-full max-w-[22rem] rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,rgba(20,20,20,0.96),rgba(8,8,8,0.98))] p-4 text-center shadow-[0_24px_80px_rgba(0,0,0,0.55)] backdrop-blur">
+            <div className="w-full max-w-[19rem] rounded-[18px] border border-white/10 bg-[linear-gradient(180deg,rgba(20,20,20,0.96),rgba(8,8,8,0.98))] p-3.5 text-center shadow-[0_24px_80px_rgba(0,0,0,0.55)] backdrop-blur sm:max-w-[20rem]">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-200">
                 Sebelum mulai nonton
               </p>
-              <h3 className="mt-3 text-xl font-bold text-white">
+              <h3 className="mt-2.5 text-lg font-bold text-white">
                 Aktifkan auto-rotate bila bisa
               </h3>
-              <p className="mt-3 text-sm leading-6 text-neutral-300">
+              <p className="mt-2 text-sm leading-5 text-neutral-300">
                 Tombol fullscreen tidak memutar layar otomatis. Jika ingin layar landscape, aktifkan auto-rotate atau putar HP sendiri. Kamu tetap bisa lanjut nonton sekarang.
               </p>
-              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              {manualSources.length ? (
+                <div className="mt-3 rounded-[14px] border border-white/8 bg-white/[0.04] p-2.5 text-left">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-neutral-400">
+                    Jika Auto tidak jalan
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-neutral-300">
+                    Coba pilih resolusi manual di bawah ini.
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {manualSources.map((source) => (
+                      <button
+                        key={`rotate-gate-${source.url}`}
+                        type="button"
+                        data-haptic="light"
+                        onClick={() => {
+                          selectSource(source);
+                          dismissedRotateSourceUrlRef.current = source.url;
+                          setShowRotateGate(false);
+                        }}
+                        className="rounded-full border border-white/10 bg-white/8 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-white/15"
+                      >
+                        {source.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
                 <Button
                   type="button"
                   variant="secondary"
+                  size="sm"
                   data-haptic="light"
                   onClick={() => {
                     dismissedRotateSourceUrlRef.current = selectedSourceUrl;
                     setShowRotateGate(false);
                   }}
-                  className="h-11 border border-white/10 bg-white/10 text-white hover:bg-white/15"
+                  className="h-10 border border-white/10 bg-white/10 text-white hover:bg-white/15"
                 >
                   Lanjutkan
                 </Button>
                 <Button
                   type="button"
+                  size="sm"
                   data-haptic="medium"
                   onClick={() => {
                     dismissedRotateSourceUrlRef.current = selectedSourceUrl;
                     setShowRotateGate(false);
                     void toggleFullscreen();
                   }}
-                  className="h-11 bg-red-600 text-white hover:bg-red-500"
+                  className="h-10 bg-red-600 text-white hover:bg-red-500"
                 >
                   Buka fullscreen
                 </Button>
@@ -1224,35 +1259,37 @@ export function WatchPlayer({
         ) : null}
         {previewEnded && !isVipActive && previewLimitSeconds > 0 ? (
           <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/78 px-4">
-            <div className="w-full max-w-md rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(20,20,20,0.96),rgba(8,8,8,0.98))] p-5 text-center shadow-[0_24px_80px_rgba(0,0,0,0.55)] backdrop-blur">
+            <div className="w-full max-w-[19.5rem] rounded-[20px] border border-white/10 bg-[linear-gradient(180deg,rgba(20,20,20,0.96),rgba(8,8,8,0.98))] p-4 text-center shadow-[0_24px_80px_rgba(0,0,0,0.55)] backdrop-blur sm:max-w-[22rem]">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-200">
                 Preview selesai
               </p>
-              <h3 className="mt-3 text-2xl font-bold text-white">
+              <h3 className="mt-2.5 text-xl font-bold text-white">
                 {stream?.paywallTitle ?? "Lanjutkan dengan VIP"}
               </h3>
-              <p className="mt-3 text-sm leading-6 text-neutral-300">
+              <p className="mt-2 text-sm leading-5 text-neutral-300">
                 {stream?.paywallDescription ??
                   "Upgrade VIP untuk lanjut nonton tanpa batas dan buka semua katalog premium."}
               </p>
-              <p className="mt-3 text-xs leading-5 text-neutral-500">
+              <p className="mt-2 text-[11px] leading-4 text-neutral-500">
                 Batas preview untuk akun gratis: {formatPreviewLimit(previewLimitSeconds)}
               </p>
-              <div className="mt-5 grid gap-2 sm:grid-cols-2">
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
                 <Button
                   type="button"
                   variant="secondary"
+                  size="sm"
                   data-haptic="light"
                   onClick={closePlayer}
-                  className="h-11 border border-white/10 bg-white/10 text-white hover:bg-white/15"
+                  className="h-10 border border-white/10 bg-white/10 text-white hover:bg-white/15"
                 >
                   Kembali ke detail
                 </Button>
                 <Button
                   asChild
                   type="button"
+                  size="sm"
                   data-haptic="medium"
-                  className="h-11 bg-red-600 text-white hover:bg-red-500"
+                  className="h-10 bg-red-600 text-white hover:bg-red-500"
                 >
                   <a href={stream?.upgradeUrl ?? "/vip"}>
                     {stream?.upgradeLabel ?? "Buka VIP"}
