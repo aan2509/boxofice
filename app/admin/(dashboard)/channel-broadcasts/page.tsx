@@ -4,7 +4,6 @@ import { AdminSurface } from "@/components/admin/admin-surface";
 import {
   buildDefaultChannelBroadcastCaption,
   getDefaultChannelBroadcastButtonLabel,
-  getDefaultChannelBroadcastSearchButtonLabel,
   listRecentChannelBroadcasts,
   searchMoviesForChannelBroadcast,
 } from "@/lib/channel-broadcasts";
@@ -38,7 +37,7 @@ export default async function AdminChannelBroadcastPage({
   const selectedMovie = movies[0] ?? null;
   const initialCaption = selectedMovie
     ? buildDefaultChannelBroadcastCaption({
-        botName: telegram.settings.brandName,
+        botUsername: telegram.runtime.botUsername,
         description: selectedMovie.description,
         title: selectedMovie.title,
       })
@@ -56,9 +55,9 @@ export default async function AdminChannelBroadcastPage({
         <p className="mt-3 max-w-4xl text-sm leading-7 text-neutral-400">
           Admin cukup menyiapkan satu broadcast, lalu pilih apakah konten itu
           dikirim dari bot utama, dari partner tertentu, atau keduanya
-          sekaligus. Setiap post membawa dua tombol wajib: tonton sekarang dan
-          cari judul. Bot partner akan otomatis memakai channel default yang
-          tersimpan di datanya masing-masing.
+          sekaligus. Setiap post sekarang hanya membawa satu tombol Tonton
+          Sekarang, sementara semua link di caption mengarah ke bot yang
+          mengirim broadcast tersebut.
         </p>
       </AdminSurface>
 
@@ -82,13 +81,17 @@ export default async function AdminChannelBroadcastPage({
             <label className="block text-sm font-medium text-neutral-300">
               Cari judul dari katalog lokal
             </label>
-            <input
-              name="q"
-              defaultValue={query}
-              placeholder="Cari film yang mau dibroadcast"
-              className="mt-2 h-12 w-full rounded-[16px] border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none placeholder:text-neutral-600"
-            />
-          </div>
+                <input
+                  name="q"
+                  defaultValue={query}
+                  placeholder="Cari film yang mau dibroadcast"
+                  className="mt-2 h-12 w-full rounded-[16px] border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none placeholder:text-neutral-600"
+                />
+                <p className="mt-2 text-xs leading-5 text-neutral-500">
+                  Kalau kolom ini kosong, daftar di bawah otomatis mengambil 20
+                  film terbaru dari katalog homepage.
+                </p>
+              </div>
           <button
             type="submit"
             className="mt-7 h-12 rounded-[16px] bg-white/10 px-4 text-sm font-semibold text-white transition hover:bg-white/15"
@@ -191,15 +194,11 @@ export default async function AdminChannelBroadcastPage({
           helperText="Bot utama harus sudah jadi admin di channel target. Kalau kamu hanya kirim lewat partner bot, field channel utama ini boleh dibiarkan kosong."
           initialButtonLabel={getDefaultChannelBroadcastButtonLabel()}
           initialCaption={initialCaption}
-          initialExtraButtonEnabled={false}
-          initialExtraButtonLabel=""
-          initialExtraButtonUrl=""
           initialMovieId={selectedMovie.id}
-          initialSearchButtonLabel={getDefaultChannelBroadcastSearchButtonLabel()}
           movies={movies.map((movie) => ({
             ...movie,
             defaultCaption: buildDefaultChannelBroadcastCaption({
-              botName: telegram.settings.brandName,
+              botUsername: telegram.runtime.botUsername,
               description: movie.description,
               title: movie.title,
             }),

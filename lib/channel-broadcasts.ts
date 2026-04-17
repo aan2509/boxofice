@@ -7,13 +7,13 @@ import {
   extractChannelBroadcastTokenFromStartParam,
 } from "@/lib/channel-broadcast-tokens";
 import {
+  buildTelegramBotChatUrlForUsername,
   buildTelegramMiniAppUrlForConfig,
-  buildTelegramSearchStartParam,
 } from "@/lib/telegram-miniapp";
+import { getHomepageBroadcastMovies } from "@/lib/movie-feeds";
 import { excludeBlockedMoviesWhere } from "@/lib/movie-visibility";
 
 const DEFAULT_BROADCAST_BUTTON_LABEL = "▶️ Tonton Sekarang";
-const DEFAULT_SEARCH_BUTTON_LABEL = "🔎 Cari Judul";
 const MAX_CAPTION_LENGTH = 1024;
 
 type PublishChannelBroadcastInput = {
@@ -23,15 +23,11 @@ type PublishChannelBroadcastInput = {
   buttonLabel: string;
   caption: string;
   channelUsername: string;
-  extraButtonEnabled?: boolean;
-  extraButtonLabel?: string;
-  extraButtonUrl?: string;
   miniAppShortName?: string | null;
   movieId: string;
   ownerUserId?: string | null;
   partnerBotId?: string | null;
   pinMessage?: boolean;
-  searchButtonLabel?: string;
 };
 
 function truncateText(value: string, maxLength: number) {
@@ -46,10 +42,6 @@ function truncateText(value: string, maxLength: number) {
 
 export function getDefaultChannelBroadcastButtonLabel() {
   return DEFAULT_BROADCAST_BUTTON_LABEL;
-}
-
-export function getDefaultChannelBroadcastSearchButtonLabel() {
-  return DEFAULT_SEARCH_BUTTON_LABEL;
 }
 
 export function normalizeTelegramChannelUsername(value: string) {
@@ -83,19 +75,29 @@ export function normalizeTelegramChannelUsername(value: string) {
 }
 
 export function buildDefaultChannelBroadcastCaption(input: {
-  botName: string;
+  botUsername: string;
   description?: string | null;
   title: string;
 }) {
-  const title = input.title.trim();
-  const description = truncateText(input.description ?? "", 420);
-  const lines = [title];
-
-  if (description) {
-    lines.push("", description);
-  }
-
-  lines.push("", `🎬 Buka sekarang di ${input.botName.trim()}.`);
+  const botLink = buildTelegramBotChatUrlForUsername(input.botUsername);
+  const description = truncateText(input.description ?? "", 360) || "Sinopsis belum tersedia.";
+  const lines = [
+    "SINOPSIS",
+    "",
+    description,
+    "",
+    "———————————————",
+    "💎 AKSES VIP - NONTON SEPUASNYA",
+    "Dapatkan akses ke semua film boxoffice hanya mulai Rp2.000 per hari.",
+    `🛍️ Langganan VIP Sekarang ${botLink}`,
+    "",
+    "☎️ BANTUAN & PERTANYAAN",
+    "Jika mengalami kendala atau butuh bantuan:",
+    `📚 Panduan Pengguna ${botLink}`,
+    `📞 Hubungi Admin Sekarang ${botLink}`,
+    "",
+    "Klik tombol di bawah untuk mulai👇",
+  ];
 
   return lines.join("\n");
 }
@@ -118,6 +120,10 @@ async function createUniqueChannelBroadcastToken() {
 
 export async function searchMoviesForChannelBroadcast(query: string) {
   const trimmedQuery = query.trim();
+
+  if (!trimmedQuery) {
+    return getHomepageBroadcastMovies(20);
+  }
 
   return prisma.movie.findMany({
     where: excludeBlockedMoviesWhere({
@@ -154,7 +160,7 @@ export async function searchMoviesForChannelBroadcast(query: string) {
       title: true,
       year: true,
     },
-    take: 24,
+    take: 20,
   });
 }
 
@@ -255,12 +261,7 @@ export async function publishChannelBroadcast(
   }
 
   const buttonLabel = input.buttonLabel.trim() || DEFAULT_BROADCAST_BUTTON_LABEL;
-  const searchButtonLabel =
-    input.searchButtonLabel?.trim() || DEFAULT_SEARCH_BUTTON_LABEL;
   const caption = input.caption.trim();
-  const extraButtonEnabled = input.extraButtonEnabled === true;
-  const extraButtonLabel = input.extraButtonLabel?.trim() ?? "";
-  const extraButtonUrl = input.extraButtonUrl?.trim() ?? "";
 
   if (!caption) {
     throw new Error("Caption broadcast wajib diisi.");
@@ -279,33 +280,6 @@ export async function publishChannelBroadcast(
     },
     startParam,
   );
-  const searchDeepLinkUrl = buildTelegramMiniAppUrlForConfig(
-    {
-      botUsername: input.botUsername,
-      miniAppShortName: input.miniAppShortName ?? null,
-    },
-    buildTelegramSearchStartParam(),
-  );
-
-  if (extraButtonEnabled) {
-    if (!extraButtonLabel) {
-      throw new Error("Label tombol tambahan wajib diisi kalau tombol tambahan diaktifkan.");
-    }
-
-    if (!extraButtonUrl) {
-      throw new Error("URL tombol tambahan wajib diisi kalau tombol tambahan diaktifkan.");
-    }
-
-    try {
-      const url = new URL(extraButtonUrl);
-
-      if (url.protocol !== "https:" && url.protocol !== "http:") {
-        throw new Error("invalid_protocol");
-      }
-    } catch {
-      throw new Error("URL tombol tambahan wajib berupa URL yang valid.");
-    }
-  }
 
   const inlineKeyboard: Array<Array<{ text: string; url: string }>> = [
     [
@@ -315,22 +289,6 @@ export async function publishChannelBroadcast(
       },
     ],
   ];
-
-  const secondaryRow: Array<{ text: string; url: string }> = [
-    {
-      text: searchButtonLabel,
-      url: searchDeepLinkUrl,
-    },
-  ];
-
-  if (extraButtonEnabled && extraButtonLabel && extraButtonUrl) {
-    secondaryRow.push({
-      text: extraButtonLabel,
-      url: extraButtonUrl,
-    });
-  }
-
-  inlineKeyboard.push(secondaryRow);
 
   const draft = await prisma.channelBroadcast.create({
     data: {

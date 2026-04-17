@@ -31,11 +31,7 @@ type ChannelBroadcastComposerProps = {
   initialButtonLabel: string;
   initialCaption: string;
   initialChannelUsername?: string;
-  initialExtraButtonEnabled?: boolean;
-  initialExtraButtonLabel?: string;
-  initialExtraButtonUrl?: string;
   initialMovieId: string;
-  initialSearchButtonLabel?: string;
   movies: BroadcastMovieOption[];
   pendingLabel: string;
   submitLabel: string;
@@ -66,11 +62,7 @@ export function ChannelBroadcastComposer({
   initialButtonLabel,
   initialCaption,
   initialChannelUsername = "",
-  initialExtraButtonEnabled = false,
-  initialExtraButtonLabel = "",
-  initialExtraButtonUrl = "",
   initialMovieId,
-  initialSearchButtonLabel = "🔎 Cari Judul",
   movies,
   pendingLabel,
   submitLabel,
@@ -85,19 +77,7 @@ export function ChannelBroadcastComposer({
   );
   const [buttonLabel, setButtonLabel] = React.useState(initialButtonLabel);
   const [caption, setCaption] = React.useState(initialCaption);
-  const [extraButtonEnabled, setExtraButtonEnabled] = React.useState(
-    initialExtraButtonEnabled,
-  );
-  const [extraButtonLabel, setExtraButtonLabel] = React.useState(
-    initialExtraButtonLabel,
-  );
-  const [extraButtonUrl, setExtraButtonUrl] = React.useState(
-    initialExtraButtonUrl,
-  );
   const [pinMessage, setPinMessage] = React.useState(true);
-  const [searchButtonLabel, setSearchButtonLabel] = React.useState(
-    initialSearchButtonLabel,
-  );
   const selectedMovie =
     movieMap.get(selectedMovieId) ?? movies[0] ?? null;
   const previousMovieIdRef = React.useRef(initialMovieId);
@@ -196,65 +176,6 @@ export function ChannelBroadcastComposer({
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-neutral-300">
-                Label tombol cari
-              </label>
-              <input
-                name="searchButtonLabel"
-                value={searchButtonLabel}
-                onChange={(event) => setSearchButtonLabel(event.target.value)}
-                className="mt-2 h-12 w-full rounded-[16px] border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none placeholder:text-neutral-600"
-                placeholder="🔎 Cari Judul"
-              />
-              <p className="mt-2 text-xs leading-5 text-neutral-500">
-                Tombol ini wajib dan akan membuka halaman pencarian di Mini App.
-              </p>
-            </div>
-
-            <div className="rounded-[16px] border border-white/10 bg-white/[0.03] p-4">
-              <label className="flex items-center gap-3 text-sm text-neutral-200">
-                <input
-                  type="checkbox"
-                  name="extraButtonEnabled"
-                  checked={extraButtonEnabled}
-                  onChange={(event) => setExtraButtonEnabled(event.target.checked)}
-                  className="size-4 rounded border-white/20 bg-transparent text-red-500 focus:ring-red-500"
-                />
-                Aktifkan tombol tambahan
-              </label>
-
-              <div className="mt-4 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-neutral-300">
-                    Label tombol tambahan
-                  </label>
-                  <input
-                    name="extraButtonLabel"
-                    value={extraButtonLabel}
-                    onChange={(event) => setExtraButtonLabel(event.target.value)}
-                    disabled={!extraButtonEnabled}
-                    className="mt-2 h-12 w-full rounded-[16px] border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none placeholder:text-neutral-600 disabled:cursor-not-allowed disabled:opacity-50"
-                    placeholder="🔥 Join VIP Sekarang"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-neutral-300">
-                    URL tombol tambahan
-                  </label>
-                  <input
-                    name="extraButtonUrl"
-                    value={extraButtonUrl}
-                    onChange={(event) => setExtraButtonUrl(event.target.value)}
-                    disabled={!extraButtonEnabled}
-                    className="mt-2 h-12 w-full rounded-[16px] border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none placeholder:text-neutral-600 disabled:cursor-not-allowed disabled:opacity-50"
-                    placeholder="https://layarbox.app/vip"
-                  />
-                </div>
-              </div>
-            </div>
-
             <label className="flex items-center gap-3 rounded-[16px] border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-neutral-200">
               <input
                 type="checkbox"
@@ -332,21 +253,6 @@ export function ChannelBroadcastComposer({
             <div className="grid gap-2">
               <div className="rounded-[16px] border border-white/10 bg-[#253140] px-4 py-3 text-center text-sm font-semibold text-white">
                 {buttonLabel.trim() || "▶️ Tonton Sekarang"}
-              </div>
-              <div
-                className={cn(
-                  "grid gap-2",
-                  extraButtonEnabled ? "grid-cols-2" : "grid-cols-1",
-                )}
-              >
-                <div className="rounded-[16px] border border-white/10 bg-[#253140] px-4 py-3 text-center text-sm font-semibold text-white">
-                  {searchButtonLabel.trim() || "🔎 Cari Judul"}
-                </div>
-                {extraButtonEnabled ? (
-                  <div className="rounded-[16px] border border-white/10 bg-[#253140] px-4 py-3 text-center text-sm font-semibold text-white">
-                    {extraButtonLabel.trim() || "Tombol tambahan"}
-                  </div>
-                ) : null}
               </div>
             </div>
           </div>

@@ -9,7 +9,6 @@ import { TelegramEntryGate } from "@/components/telegram/telegram-entry-gate";
 import {
   buildDefaultChannelBroadcastCaption,
   getDefaultChannelBroadcastButtonLabel,
-  getDefaultChannelBroadcastSearchButtonLabel,
   listRecentChannelBroadcasts,
   searchMoviesForChannelBroadcast,
 } from "@/lib/channel-broadcasts";
@@ -86,7 +85,7 @@ export default async function PartnerBotBroadcastPage({
   const botDisplayName = selectedBot.label?.trim() || selectedBot.botName;
   const initialCaption = selectedMovie
     ? buildDefaultChannelBroadcastCaption({
-        botName: botDisplayName,
+        botUsername: selectedBot.botUsername,
         description: selectedMovie.description,
         title: selectedMovie.title,
       })
@@ -107,10 +106,9 @@ export default async function PartnerBotBroadcastPage({
               Kirim poster ke channel partner
             </h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-neutral-400">
-              Bot partner kamu bisa kirim poster, sinopsis, dua tombol wajib
-              untuk nonton dan cari judul, plus satu tombol tambahan opsional
-              ke channel sendiri. Klik dari channel akan dibawa ke Mini App bot
-              kamu.
+              Bot partner kamu bisa kirim poster, template pesan tetap, dan
+              satu tombol Tonton Sekarang ke channel sendiri. Semua link di
+              dalam pesan akan mengarah ke bot partner yang sedang dipilih.
             </p>
           </div>
 
@@ -181,6 +179,10 @@ export default async function PartnerBotBroadcastPage({
                 placeholder="Cari film untuk channel partner"
                 className="mt-2 h-12 w-full rounded-[16px] border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none placeholder:text-neutral-600"
               />
+              <p className="mt-2 text-xs leading-5 text-neutral-500">
+                Kalau kolom ini kosong, daftar di bawah otomatis mengambil 20
+                film terbaru dari katalog homepage.
+              </p>
             </div>
             <button
               type="submit"
@@ -200,15 +202,11 @@ export default async function PartnerBotBroadcastPage({
             hiddenFields={[{ name: "partnerBotId", value: selectedBot.id }]}
             initialButtonLabel={getDefaultChannelBroadcastButtonLabel()}
             initialCaption={initialCaption}
-            initialExtraButtonEnabled={false}
-            initialExtraButtonLabel=""
-            initialExtraButtonUrl=""
             initialMovieId={selectedMovie.id}
-            initialSearchButtonLabel={getDefaultChannelBroadcastSearchButtonLabel()}
             movies={movies.map((movie) => ({
               ...movie,
               defaultCaption: buildDefaultChannelBroadcastCaption({
-                botName: botDisplayName,
+                botUsername: selectedBot.botUsername,
                 description: movie.description,
                 title: movie.title,
               }),

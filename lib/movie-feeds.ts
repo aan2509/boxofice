@@ -64,6 +64,15 @@ export type CatalogPage = {
   totalMovies: number;
 };
 
+export type BroadcastMovieCard = {
+  description: string | null;
+  id: string;
+  rating: string | null;
+  thumbnail: string | null;
+  title: string;
+  year: string | null;
+};
+
 type FeedDefinition = {
   slug: FeedSlug;
   title: string;
@@ -287,6 +296,26 @@ const getCatalogPageCached = unstable_cache(
   { revalidate: FEED_REVALIDATE_SECONDS },
 );
 
+const getHomepageBroadcastMoviesCached = unstable_cache(
+  async (limit: number): Promise<BroadcastMovieCard[]> => {
+    return prisma.movie.findMany({
+      where: getCatalogWhere(),
+      orderBy: CATALOG_ORDER_BY,
+      take: limit,
+      select: {
+        description: true,
+        id: true,
+        rating: true,
+        thumbnail: true,
+        title: true,
+        year: true,
+      },
+    });
+  },
+  ["homepage-broadcast-movies"],
+  { revalidate: FEED_REVALIDATE_SECONDS },
+);
+
 export async function getCatalogPage(
   options: HomepageFilters & {
     limit?: number;
@@ -308,6 +337,19 @@ export async function getCatalogPage(
       nextOffset: null,
       totalMovies: 0,
     };
+  }
+}
+
+export async function getHomepageBroadcastMovies(
+  limit = 20,
+): Promise<BroadcastMovieCard[]> {
+  const safeLimit = Math.max(1, Math.min(limit, 30));
+
+  try {
+    return await getHomepageBroadcastMoviesCached(safeLimit);
+  } catch (error) {
+    console.error("Failed to load homepage broadcast movies", error);
+    return [];
   }
 }
 
