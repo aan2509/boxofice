@@ -90,6 +90,17 @@ function chooseDefaultSource(
     return null;
   }
 
+  const autoSource = sources.find((source) => {
+    const label = normalizeQuality(source.label);
+    const quality = normalizeQuality(source.quality);
+
+    return label === "auto" || quality === "auto";
+  });
+
+  if (autoSource) {
+    return autoSource;
+  }
+
   const preferredQuality = normalizeQuality(defaultQuality);
 
   if (preferredQuality) {
