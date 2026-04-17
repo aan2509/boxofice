@@ -196,6 +196,12 @@ export async function resolveChannelBroadcastStartParam(
     where: { token },
     select: {
       movieId: true,
+      movie: {
+        select: {
+          thumbnail: true,
+          title: true,
+        },
+      },
       token: true,
     },
   });

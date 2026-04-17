@@ -3,6 +3,8 @@ import Link from "next/link";
 
 import { HomeCatalog } from "@/components/movie/home-catalog";
 import { TelegramEntryGate } from "@/components/telegram/telegram-entry-gate";
+import { resolveChannelBroadcastStartParam } from "@/lib/channel-broadcasts";
+import { extractChannelBroadcastTokenFromStartParam } from "@/lib/channel-broadcast-tokens";
 import {
   getCatalogPage,
   getHomepageFilterOptions,
@@ -20,6 +22,10 @@ export const dynamic = "force-dynamic";
 type HomePageProps = {
   searchParams: Promise<{
     genre?: string;
+    ref?: string;
+    start_param?: string;
+    startapp?: string;
+    tgWebAppStartParam?: string;
     year?: string;
   }>;
 };
@@ -87,10 +93,11 @@ function FilterChip({
 }
 
 export default async function Home({ searchParams }: HomePageProps) {
-  const [{ genre, year }, user] = await Promise.all([
+  const [params, user] = await Promise.all([
     searchParams,
     getCurrentUserSession(),
   ]);
+  const { genre, year } = params;
 
   if (!user) {
     const telegram = await getTelegramBotSettingsSafe();
@@ -110,6 +117,59 @@ export default async function Home({ searchParams }: HomePageProps) {
 
   const selectedGenre = normalizeQueryValue(genre);
   const selectedYear = normalizeQueryValue(year);
+  const incomingStartParam =
+    normalizeQueryValue(params.start_param) ??
+    normalizeQueryValue(params.startapp) ??
+    normalizeQueryValue(params.tgWebAppStartParam) ??
+    normalizeQueryValue(params.ref);
+  const isBroadcastStart = Boolean(
+    extractChannelBroadcastTokenFromStartParam(incomingStartParam),
+  );
+
+  if (isBroadcastStart) {
+    const broadcastTarget = await resolveChannelBroadcastStartParam(
+      incomingStartParam,
+    ).catch(() => null);
+
+    return (
+      <main className="relative min-h-screen overflow-hidden bg-black px-4 py-8 text-white">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(220,38,38,0.2),transparent_26%),radial-gradient(circle_at_50%_18%,rgba(255,115,0,0.14),transparent_32%),linear-gradient(180deg,#120909_0%,#050505_58%,#020202_100%)]" />
+
+        <section className="relative z-10 mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-md flex-col justify-center">
+          <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(20,20,20,0.92),rgba(8,8,8,0.96))] p-6 text-center shadow-[0_24px_80px_rgba(0,0,0,0.48)] backdrop-blur-xl">
+            {broadcastTarget?.movie?.thumbnail ? (
+              <div className="mx-auto mb-5 overflow-hidden rounded-[18px] border border-white/10 bg-white/5 shadow-[0_16px_40px_rgba(0,0,0,0.35)]">
+                <div className="relative mx-auto aspect-[4/5] w-24">
+                  <Image
+                    src={broadcastTarget.movie.thumbnail}
+                    alt={broadcastTarget.movie.title || "Poster film"}
+                    fill
+                    unoptimized
+                    sizes="96px"
+                    className="object-cover"
+                  />
+                </div>
+              </div>
+            ) : null}
+            <div className="mx-auto size-11 animate-spin rounded-full border-2 border-red-400/25 border-t-red-400" />
+            <p className="mt-5 text-lg font-semibold text-white">
+              Membuka film dari channel...
+            </p>
+            {broadcastTarget?.movie?.title ? (
+              <p className="mt-2 text-sm font-medium text-orange-200">
+                {broadcastTarget.movie.title}
+              </p>
+            ) : null}
+            <p className="mt-3 text-sm leading-7 text-neutral-400">
+              Kami sedang menyiapkan halaman tujuan kamu di Mini App. Tunggu
+              sebentar ya.
+            </p>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
   const [filters, catalog] = await Promise.all([
     getHomepageFilterOptions(),
     getCatalogPage({
