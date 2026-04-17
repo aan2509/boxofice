@@ -6,7 +6,10 @@ import { MessageCircle, ShieldCheck, Smartphone } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { extractChannelBroadcastTokenFromStartParam } from "@/lib/channel-broadcast-tokens";
-import { extractMovieIdFromStartParam } from "@/lib/telegram-miniapp";
+import {
+  extractMovieIdFromStartParam,
+  extractSearchRouteFromStartParam,
+} from "@/lib/telegram-miniapp";
 
 type TelegramWebApp = {
   disableVerticalSwipes?: () => void;
@@ -68,6 +71,10 @@ function getTelegramStartTargetPath(startParam?: string | null) {
 
   if (movieId) {
     return `/movie/${movieId}`;
+  }
+
+  if (extractSearchRouteFromStartParam(resolvedStartParam)) {
+    return "/search";
   }
 
   const broadcastToken = extractChannelBroadcastTokenFromStartParam(

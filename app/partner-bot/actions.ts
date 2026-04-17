@@ -355,7 +355,11 @@ export async function publishPartnerChannelBroadcastAction(formData: FormData) {
   const movieId = readTextField(formData, "movieId");
   const caption = readTextField(formData, "caption");
   const buttonLabel = readTextField(formData, "buttonLabel");
+  const extraButtonEnabled = formData.get("extraButtonEnabled") === "on";
+  const extraButtonLabel = readTextField(formData, "extraButtonLabel");
+  const extraButtonUrl = readTextField(formData, "extraButtonUrl");
   const pinMessage = formData.get("pinMessage") === "on";
+  const searchButtonLabel = readTextField(formData, "searchButtonLabel");
 
   if (!partnerBotId) {
     redirectToPartnerBroadcast({
@@ -418,11 +422,15 @@ export async function publishPartnerChannelBroadcastAction(formData: FormData) {
       buttonLabel,
       caption,
       channelUsername,
+      extraButtonEnabled,
+      extraButtonLabel,
+      extraButtonUrl,
       miniAppShortName: partnerBot.miniAppShortName,
       movieId,
       ownerUserId: partnerBot.ownerUserId,
       partnerBotId: partnerBot.id,
       pinMessage,
+      searchButtonLabel,
     });
 
     revalidatePath("/partner-bot/broadcast");

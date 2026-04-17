@@ -970,7 +970,11 @@ export async function publishAdminChannelBroadcastAction(formData: FormData) {
   const movieId = readTextField(formData, "movieId");
   const caption = readTextField(formData, "caption");
   const buttonLabel = readTextField(formData, "buttonLabel");
+  const extraButtonEnabled = formData.get("extraButtonEnabled") === "on";
+  const extraButtonLabel = readTextField(formData, "extraButtonLabel");
+  const extraButtonUrl = readTextField(formData, "extraButtonUrl");
   const pinMessage = formData.get("pinMessage") === "on";
+  const searchButtonLabel = readTextField(formData, "searchButtonLabel");
   const includeMainBot = formData.get("includeMainBot") === "on";
   const selectedPartnerBotIds = formData
     .getAll("partnerBotIds")
@@ -1028,9 +1032,13 @@ export async function publishAdminChannelBroadcastAction(formData: FormData) {
           buttonLabel,
           caption,
           channelUsername,
+          extraButtonEnabled,
+          extraButtonLabel,
+          extraButtonUrl,
           miniAppShortName: telegram.runtime.miniAppShortName,
           movieId,
           pinMessage,
+          searchButtonLabel,
         });
 
         successLabels.push(
@@ -1064,11 +1072,15 @@ export async function publishAdminChannelBroadcastAction(formData: FormData) {
         buttonLabel,
         caption,
         channelUsername: partnerBot.defaultChannelUsername,
+        extraButtonEnabled,
+        extraButtonLabel,
+        extraButtonUrl,
         miniAppShortName: partnerBot.miniAppShortName,
         movieId,
         ownerUserId: partnerBot.ownerUserId,
         partnerBotId: partnerBot.id,
         pinMessage,
+        searchButtonLabel,
       });
 
       successLabels.push(
@@ -1268,7 +1280,11 @@ export async function publishMainChannelBroadcastAction(formData: FormData) {
   const movieId = readTextField(formData, "movieId");
   const caption = readTextField(formData, "caption");
   const buttonLabel = readTextField(formData, "buttonLabel");
+  const extraButtonEnabled = formData.get("extraButtonEnabled") === "on";
+  const extraButtonLabel = readTextField(formData, "extraButtonLabel");
+  const extraButtonUrl = readTextField(formData, "extraButtonUrl");
   const pinMessage = formData.get("pinMessage") === "on";
+  const searchButtonLabel = readTextField(formData, "searchButtonLabel");
 
   if (!movieId) {
     redirect(
@@ -1294,9 +1310,13 @@ export async function publishMainChannelBroadcastAction(formData: FormData) {
       buttonLabel,
       caption,
       channelUsername,
+      extraButtonEnabled,
+      extraButtonLabel,
+      extraButtonUrl,
       miniAppShortName: telegram.runtime.miniAppShortName,
       movieId,
       pinMessage,
+      searchButtonLabel,
     });
 
     revalidatePath("/admin/channel-broadcasts");

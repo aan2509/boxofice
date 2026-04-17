@@ -4,7 +4,10 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 
 import { extractChannelBroadcastTokenFromStartParam } from "@/lib/channel-broadcast-tokens";
-import { extractMovieIdFromStartParam } from "@/lib/telegram-miniapp";
+import {
+  extractMovieIdFromStartParam,
+  extractSearchRouteFromStartParam,
+} from "@/lib/telegram-miniapp";
 
 type TelegramWebApp = {
   initData?: string;
@@ -76,6 +79,10 @@ function getTelegramStartTargetPath(startParam?: string | null) {
 
   if (movieId) {
     return `/movie/${movieId}`;
+  }
+
+  if (extractSearchRouteFromStartParam(startParam ?? readStartParamFromLocation())) {
+    return "/search";
   }
 
   const broadcastToken = extractChannelBroadcastTokenFromStartParam(

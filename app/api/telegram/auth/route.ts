@@ -8,6 +8,7 @@ import {
 import { resolveChannelBroadcastStartParam } from "@/lib/channel-broadcasts";
 import {
   extractAffiliateCodeFromStartParam,
+  extractSearchRouteFromStartParam,
 } from "@/lib/telegram-miniapp";
 import { setActiveBotContextCookie } from "@/lib/bot-access";
 import { validateTelegramInitDataWithKnownBots } from "@/lib/telegram-partner-bots";
@@ -56,6 +57,9 @@ export async function POST(request: NextRequest) {
       (await resolveChannelBroadcastStartParam(
         telegram.startParam ?? fallbackStartParam,
       ).catch(() => null)) ?? null;
+    const shouldOpenSearch = extractSearchRouteFromStartParam(
+      telegram.startParam ?? fallbackStartParam,
+    );
     const referralCode =
       partnerReferralCode ??
       referralCodeFromInitData ??
@@ -85,7 +89,11 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       ok: true,
-      redirectPath: broadcastTarget ? `/movie/${broadcastTarget.movieId}` : null,
+      redirectPath: broadcastTarget
+        ? `/movie/${broadcastTarget.movieId}`
+        : shouldOpenSearch
+          ? "/search"
+          : null,
       user: {
         id: user.id,
         name: user.name,

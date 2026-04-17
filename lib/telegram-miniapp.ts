@@ -137,6 +137,10 @@ export function buildAffiliateStartParam(referralCode: string) {
   return `ref_${referralCode.trim().toUpperCase()}`;
 }
 
+export function buildTelegramSearchStartParam() {
+  return "search";
+}
+
 export function buildTelegramAppStartParam(input: {
   movieId?: string | null;
   referralCode?: string | null;
@@ -184,6 +188,16 @@ export function extractMovieIdFromStartParam(startParam: string | null) {
   }
 
   return movieId;
+}
+
+export function extractSearchRouteFromStartParam(startParam: string | null) {
+  if (!startParam) {
+    return false;
+  }
+
+  const normalized = startParam.trim();
+
+  return /(?:^|__)search(?:$|__)/i.test(normalized);
 }
 
 function parseTelegramUser(value: string | null) {

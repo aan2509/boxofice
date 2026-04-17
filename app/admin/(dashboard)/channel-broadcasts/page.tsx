@@ -4,6 +4,7 @@ import { AdminSurface } from "@/components/admin/admin-surface";
 import {
   buildDefaultChannelBroadcastCaption,
   getDefaultChannelBroadcastButtonLabel,
+  getDefaultChannelBroadcastSearchButtonLabel,
   listRecentChannelBroadcasts,
   searchMoviesForChannelBroadcast,
 } from "@/lib/channel-broadcasts";
@@ -55,7 +56,8 @@ export default async function AdminChannelBroadcastPage({
         <p className="mt-3 max-w-4xl text-sm leading-7 text-neutral-400">
           Admin cukup menyiapkan satu broadcast, lalu pilih apakah konten itu
           dikirim dari bot utama, dari partner tertentu, atau keduanya
-          sekaligus. Bot partner akan otomatis memakai channel default yang
+          sekaligus. Setiap post membawa dua tombol wajib: tonton sekarang dan
+          cari judul. Bot partner akan otomatis memakai channel default yang
           tersimpan di datanya masing-masing.
         </p>
       </AdminSurface>
@@ -189,7 +191,11 @@ export default async function AdminChannelBroadcastPage({
           helperText="Bot utama harus sudah jadi admin di channel target. Kalau kamu hanya kirim lewat partner bot, field channel utama ini boleh dibiarkan kosong."
           initialButtonLabel={getDefaultChannelBroadcastButtonLabel()}
           initialCaption={initialCaption}
+          initialExtraButtonEnabled={false}
+          initialExtraButtonLabel=""
+          initialExtraButtonUrl=""
           initialMovieId={selectedMovie.id}
+          initialSearchButtonLabel={getDefaultChannelBroadcastSearchButtonLabel()}
           movies={movies.map((movie) => ({
             ...movie,
             defaultCaption: buildDefaultChannelBroadcastCaption({

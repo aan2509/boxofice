@@ -6,10 +6,14 @@ import {
   buildChannelBroadcastStartParam,
   extractChannelBroadcastTokenFromStartParam,
 } from "@/lib/channel-broadcast-tokens";
-import { buildTelegramMiniAppUrlForConfig } from "@/lib/telegram-miniapp";
+import {
+  buildTelegramMiniAppUrlForConfig,
+  buildTelegramSearchStartParam,
+} from "@/lib/telegram-miniapp";
 import { excludeBlockedMoviesWhere } from "@/lib/movie-visibility";
 
 const DEFAULT_BROADCAST_BUTTON_LABEL = "▶️ Tonton Sekarang";
+const DEFAULT_SEARCH_BUTTON_LABEL = "🔎 Cari Judul";
 const MAX_CAPTION_LENGTH = 1024;
 
 type PublishChannelBroadcastInput = {
@@ -19,11 +23,15 @@ type PublishChannelBroadcastInput = {
   buttonLabel: string;
   caption: string;
   channelUsername: string;
+  extraButtonEnabled?: boolean;
+  extraButtonLabel?: string;
+  extraButtonUrl?: string;
   miniAppShortName?: string | null;
   movieId: string;
   ownerUserId?: string | null;
   partnerBotId?: string | null;
   pinMessage?: boolean;
+  searchButtonLabel?: string;
 };
 
 function truncateText(value: string, maxLength: number) {
@@ -38,6 +46,10 @@ function truncateText(value: string, maxLength: number) {
 
 export function getDefaultChannelBroadcastButtonLabel() {
   return DEFAULT_BROADCAST_BUTTON_LABEL;
+}
+
+export function getDefaultChannelBroadcastSearchButtonLabel() {
+  return DEFAULT_SEARCH_BUTTON_LABEL;
 }
 
 export function normalizeTelegramChannelUsername(value: string) {
@@ -243,7 +255,12 @@ export async function publishChannelBroadcast(
   }
 
   const buttonLabel = input.buttonLabel.trim() || DEFAULT_BROADCAST_BUTTON_LABEL;
+  const searchButtonLabel =
+    input.searchButtonLabel?.trim() || DEFAULT_SEARCH_BUTTON_LABEL;
   const caption = input.caption.trim();
+  const extraButtonEnabled = input.extraButtonEnabled === true;
+  const extraButtonLabel = input.extraButtonLabel?.trim() ?? "";
+  const extraButtonUrl = input.extraButtonUrl?.trim() ?? "";
 
   if (!caption) {
     throw new Error("Caption broadcast wajib diisi.");
@@ -262,6 +279,55 @@ export async function publishChannelBroadcast(
     },
     startParam,
   );
+  const searchDeepLinkUrl = buildTelegramMiniAppUrlForConfig(
+    {
+      botUsername: input.botUsername,
+      miniAppShortName: input.miniAppShortName ?? null,
+    },
+    buildTelegramSearchStartParam(),
+  );
+
+  if (extraButtonEnabled) {
+    if (!extraButtonLabel) {
+      throw new Error("Label tombol tambahan wajib diisi kalau tombol tambahan diaktifkan.");
+    }
+
+    if (!extraButtonUrl) {
+      throw new Error("URL tombol tambahan wajib diisi kalau tombol tambahan diaktifkan.");
+    }
+
+    try {
+      const url = new URL(extraButtonUrl);
+
+      if (url.protocol !== "https:" && url.protocol !== "http:") {
+        throw new Error("invalid_protocol");
+      }
+    } catch {
+      throw new Error("URL tombol tambahan wajib berupa URL yang valid.");
+    }
+  }
+
+  const inlineKeyboard: Array<Array<{ text: string; url: string }>> = [
+    [
+      {
+        text: buttonLabel,
+        url: deepLinkUrl,
+      },
+      {
+        text: searchButtonLabel,
+        url: searchDeepLinkUrl,
+      },
+    ],
+  ];
+
+  if (extraButtonEnabled && extraButtonLabel && extraButtonUrl) {
+    inlineKeyboard.push([
+      {
+        text: extraButtonLabel,
+        url: extraButtonUrl,
+      },
+    ]);
+  }
 
   const draft = await prisma.channelBroadcast.create({
     data: {
@@ -285,14 +351,7 @@ export async function publishChannelBroadcast(
       chatId: `@${normalizedChannelUsername}`,
       photo: movie.thumbnail,
       replyMarkup: {
-        inline_keyboard: [
-          [
-            {
-              text: buttonLabel,
-              url: deepLinkUrl,
-            },
-          ],
-        ],
+        inline_keyboard: inlineKeyboard,
       },
     });
 

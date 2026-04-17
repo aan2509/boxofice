@@ -14,6 +14,7 @@ import { getTelegramBotSettingsSafe } from "@/lib/telegram-bot-settings";
 import {
   buildTelegramBotChatUrlForUsername,
   buildTelegramMainMiniAppUrlForUsername,
+  extractSearchRouteFromStartParam,
 } from "@/lib/telegram-miniapp";
 import { getCurrentUserSession } from "@/lib/user-auth";
 
@@ -125,6 +126,7 @@ export default async function Home({ searchParams }: HomePageProps) {
   const isBroadcastStart = Boolean(
     extractChannelBroadcastTokenFromStartParam(incomingStartParam),
   );
+  const isSearchStart = extractSearchRouteFromStartParam(incomingStartParam);
 
   if (isBroadcastStart) {
     const broadcastTarget = await resolveChannelBroadcastStartParam(
@@ -162,6 +164,27 @@ export default async function Home({ searchParams }: HomePageProps) {
             ) : null}
             <p className="mt-3 text-sm leading-7 text-neutral-400">
               Kami sedang menyiapkan halaman tujuan kamu di Mini App. Tunggu
+              sebentar ya.
+            </p>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  if (isSearchStart) {
+    return (
+      <main className="relative min-h-screen overflow-hidden bg-black px-4 py-8 text-white">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(220,38,38,0.2),transparent_26%),radial-gradient(circle_at_50%_18%,rgba(255,115,0,0.14),transparent_32%),linear-gradient(180deg,#120909_0%,#050505_58%,#020202_100%)]" />
+
+        <section className="relative z-10 mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-md flex-col justify-center">
+          <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(20,20,20,0.92),rgba(8,8,8,0.96))] p-6 text-center shadow-[0_24px_80px_rgba(0,0,0,0.48)] backdrop-blur-xl">
+            <div className="mx-auto size-11 animate-spin rounded-full border-2 border-red-400/25 border-t-red-400" />
+            <p className="mt-5 text-lg font-semibold text-white">
+              Membuka pencarian film...
+            </p>
+            <p className="mt-3 text-sm leading-7 text-neutral-400">
+              Kami sedang menyiapkan halaman cari judul di Mini App. Tunggu
               sebentar ya.
             </p>
           </div>

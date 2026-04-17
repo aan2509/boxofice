@@ -9,6 +9,7 @@ import { TelegramEntryGate } from "@/components/telegram/telegram-entry-gate";
 import {
   buildDefaultChannelBroadcastCaption,
   getDefaultChannelBroadcastButtonLabel,
+  getDefaultChannelBroadcastSearchButtonLabel,
   listRecentChannelBroadcasts,
   searchMoviesForChannelBroadcast,
 } from "@/lib/channel-broadcasts";
@@ -106,9 +107,10 @@ export default async function PartnerBotBroadcastPage({
               Kirim poster ke channel partner
             </h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-neutral-400">
-              Bot partner kamu bisa kirim poster, sinopsis, dan satu tombol
-              “Tonton Sekarang” ke channel sendiri. Klik dari channel akan
-              dibawa ke film yang tepat di Mini App bot kamu.
+              Bot partner kamu bisa kirim poster, sinopsis, dua tombol wajib
+              untuk nonton dan cari judul, plus satu tombol tambahan opsional
+              ke channel sendiri. Klik dari channel akan dibawa ke Mini App bot
+              kamu.
             </p>
           </div>
 
@@ -198,7 +200,11 @@ export default async function PartnerBotBroadcastPage({
             hiddenFields={[{ name: "partnerBotId", value: selectedBot.id }]}
             initialButtonLabel={getDefaultChannelBroadcastButtonLabel()}
             initialCaption={initialCaption}
+            initialExtraButtonEnabled={false}
+            initialExtraButtonLabel=""
+            initialExtraButtonUrl=""
             initialMovieId={selectedMovie.id}
+            initialSearchButtonLabel={getDefaultChannelBroadcastSearchButtonLabel()}
             movies={movies.map((movie) => ({
               ...movie,
               defaultCaption: buildDefaultChannelBroadcastCaption({
