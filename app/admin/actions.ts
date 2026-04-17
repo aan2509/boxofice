@@ -699,6 +699,13 @@ export async function updateTelegramBotSettings(formData: FormData) {
     brandName: readTextField(formData, "brandName") || "Layar Box Office",
     botToken: readNullableTextField(formData, "botToken"),
     botUsername: readNullableTextField(formData, "botUsername"),
+    dramaAppUrl:
+      readNullableUrlField(
+        formData,
+        "dramaAppUrl",
+        "URL Mini App drama",
+        redirectBasePath,
+      ) ?? "",
     miniAppShortName: readNullableTextField(formData, "miniAppShortName"),
     ownerTelegramId: readNullableTextField(formData, "ownerTelegramId"),
     publicAppUrl: readNullableUrlField(
@@ -854,6 +861,13 @@ export async function savePartnerBotFromAdmin(formData: FormData) {
     formData,
     "defaultChannelUsername",
   );
+  const dramaBotUrl = readNullableUrlField(
+    formData,
+    "dramaBotUrl",
+    "URL Mini App drama partner",
+    redirectBasePath,
+    "partner",
+  );
   const label = readNullableTextField(formData, "label");
   const miniAppShortName = readNullableTextField(formData, "miniAppShortName");
   const active = formData.get("active") === "on";
@@ -926,6 +940,7 @@ export async function savePartnerBotFromAdmin(formData: FormData) {
     botToken: botToken.trim(),
     botUsername: botProfile.botUsername,
     defaultChannelUsername,
+    dramaBotUrl,
     label,
     miniAppShortName,
     ownerUserId: owner.id,
@@ -969,6 +984,8 @@ export async function publishAdminChannelBroadcastAction(formData: FormData) {
   const caption = readTextField(formData, "caption");
   const buttonLabel = readTextField(formData, "buttonLabel");
   const pinMessage = formData.get("pinMessage") === "on";
+  const includeSearchButton = formData.get("includeSearchButton") === "on";
+  const includeDramaButton = formData.get("includeDramaButton") === "on";
   const includeMainBot = formData.get("includeMainBot") === "on";
   const selectedPartnerBotIds = formData
     .getAll("partnerBotIds")
@@ -1001,6 +1018,7 @@ export async function publishAdminChannelBroadcastAction(formData: FormData) {
           botToken: true,
           botUsername: true,
           defaultChannelUsername: true,
+          dramaBotUrl: true,
           id: true,
           label: true,
           miniAppShortName: true,
@@ -1017,6 +1035,8 @@ export async function publishAdminChannelBroadcastAction(formData: FormData) {
       targetErrors.push("Bot utama belum lengkap. Isi bot token dan username lebih dulu.");
     } else if (!channelUsername) {
       targetErrors.push("Channel default bot utama belum diisi di form broadcast.");
+    } else if (includeDramaButton && !telegram.settings.dramaAppUrl.trim()) {
+      targetErrors.push("Bot utama belum punya URL Mini App drama di pengaturan bot.");
     } else {
       try {
         const result = await publishChannelBroadcast({
@@ -1026,6 +1046,11 @@ export async function publishAdminChannelBroadcastAction(formData: FormData) {
           buttonLabel,
           caption,
           channelUsername,
+          dramaButtonUrl: includeDramaButton
+            ? telegram.settings.dramaAppUrl.trim()
+            : null,
+          includeDramaButton,
+          includeSearchButton,
           miniAppShortName: telegram.runtime.miniAppShortName,
           movieId,
           pinMessage,
@@ -1054,6 +1079,13 @@ export async function publishAdminChannelBroadcastAction(formData: FormData) {
       continue;
     }
 
+    if (includeDramaButton && !partnerBot.dramaBotUrl?.trim()) {
+      targetErrors.push(
+        `${partnerBot.label?.trim() || partnerBot.botName} belum punya URL Mini App drama.`,
+      );
+      continue;
+    }
+
     try {
       const result = await publishChannelBroadcast({
         botKind: "partner",
@@ -1062,6 +1094,11 @@ export async function publishAdminChannelBroadcastAction(formData: FormData) {
         buttonLabel,
         caption,
         channelUsername: partnerBot.defaultChannelUsername,
+        dramaButtonUrl: includeDramaButton
+          ? partnerBot.dramaBotUrl?.trim() || null
+          : null,
+        includeDramaButton,
+        includeSearchButton,
         miniAppShortName: partnerBot.miniAppShortName,
         movieId,
         ownerUserId: partnerBot.ownerUserId,
@@ -1266,6 +1303,8 @@ export async function publishMainChannelBroadcastAction(formData: FormData) {
   const movieId = readTextField(formData, "movieId");
   const caption = readTextField(formData, "caption");
   const buttonLabel = readTextField(formData, "buttonLabel");
+  const includeSearchButton = formData.get("includeSearchButton") === "on";
+  const includeDramaButton = formData.get("includeDramaButton") === "on";
   const pinMessage = formData.get("pinMessage") === "on";
 
   if (!movieId) {
@@ -1282,6 +1321,12 @@ export async function publishMainChannelBroadcastAction(formData: FormData) {
     );
   }
 
+  if (includeDramaButton && !telegram.settings.dramaAppUrl.trim()) {
+    redirect(
+      `${redirectBasePath}?broadcast=error&message=${encodeURIComponent("Isi dulu URL Mini App drama di pengaturan bot utama.")}`,
+    );
+  }
+
   let successMessage = "";
 
   try {
@@ -1292,6 +1337,11 @@ export async function publishMainChannelBroadcastAction(formData: FormData) {
       buttonLabel,
       caption,
       channelUsername,
+      dramaButtonUrl: includeDramaButton
+        ? telegram.settings.dramaAppUrl.trim()
+        : null,
+      includeDramaButton,
+      includeSearchButton,
       miniAppShortName: telegram.runtime.miniAppShortName,
       movieId,
       pinMessage,

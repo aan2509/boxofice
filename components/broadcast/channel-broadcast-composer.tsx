@@ -76,6 +76,8 @@ export function ChannelBroadcastComposer({
     initialChannelUsername,
   );
   const [buttonLabel, setButtonLabel] = React.useState(initialButtonLabel);
+  const [includeDramaButton, setIncludeDramaButton] = React.useState(false);
+  const [includeSearchButton, setIncludeSearchButton] = React.useState(false);
   const [caption, setCaption] = React.useState(initialCaption);
   const [pinMessage, setPinMessage] = React.useState(true);
   const selectedMovie =
@@ -180,6 +182,36 @@ export function ChannelBroadcastComposer({
               />
             </div>
 
+            <div className="space-y-3 rounded-[16px] border border-white/10 bg-white/[0.03] p-4">
+              <p className="text-sm font-semibold text-white">Tombol optional</p>
+              <label className="flex items-center gap-3 text-sm text-neutral-200">
+                <input
+                  type="checkbox"
+                  name="includeSearchButton"
+                  checked={includeSearchButton}
+                  onChange={(event) => setIncludeSearchButton(event.target.checked)}
+                  className="size-4 rounded border-white/20 bg-transparent text-red-500 focus:ring-red-500"
+                />
+                Aktifkan tombol <span className="font-medium text-white">Cari Film</span>
+              </label>
+              <label className="flex items-center gap-3 text-sm text-neutral-200">
+                <input
+                  type="checkbox"
+                  name="includeDramaButton"
+                  checked={includeDramaButton}
+                  onChange={(event) => setIncludeDramaButton(event.target.checked)}
+                  className="size-4 rounded border-white/20 bg-transparent text-red-500 focus:ring-red-500"
+                />
+                Aktifkan tombol{" "}
+                <span className="font-medium text-white">Drama Series</span>
+              </label>
+              <p className="text-xs leading-5 text-neutral-500">
+                Tombol Cari Film akan membuka halaman search mini app bot pengirim.
+                Tombol Drama Series memakai URL drama yang kamu atur di
+                pengaturan bot.
+              </p>
+            </div>
+
             <label className="flex items-center gap-3 rounded-[16px] border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-neutral-200">
               <input
                 type="checkbox"
@@ -258,6 +290,27 @@ export function ChannelBroadcastComposer({
               <div className="rounded-[16px] border border-white/10 bg-[#253140] px-4 py-3 text-center text-sm font-semibold text-white">
                 {buttonLabel.trim() || "▶️ Tonton Sekarang"}
               </div>
+              {includeSearchButton || includeDramaButton ? (
+                <div
+                  className={cn(
+                    "grid gap-2",
+                    includeSearchButton && includeDramaButton
+                      ? "grid-cols-2"
+                      : "grid-cols-1",
+                  )}
+                >
+                  {includeSearchButton ? (
+                    <div className="rounded-[16px] border border-white/10 bg-[#253140] px-4 py-3 text-center text-sm font-semibold text-white">
+                      🔎 Cari Film
+                    </div>
+                  ) : null}
+                  {includeDramaButton ? (
+                    <div className="rounded-[16px] border border-white/10 bg-[#253140] px-4 py-3 text-center text-sm font-semibold text-white">
+                      🎭 Drama Series
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           </div>
         </div>

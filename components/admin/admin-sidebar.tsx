@@ -39,11 +39,11 @@ const items = [
     match: (pathname: string) => pathname.startsWith("/admin/users"),
   },
   {
-    description: "Kelola sinkronisasi katalog",
-    href: "/admin/sync",
-    icon: RefreshCw,
-    label: "Sync",
-    match: (pathname: string) => pathname.startsWith("/admin/sync"),
+    description: "Poster channel dan tombol tonton sekarang",
+    href: "/admin/channel-broadcasts",
+    icon: Megaphone,
+    label: "Broadcast channel",
+    match: (pathname: string) => pathname.startsWith("/admin/channel-broadcasts"),
   },
   {
     description: "Telegram bot, webhook, dan Mini App",
@@ -53,25 +53,18 @@ const items = [
     match: (pathname: string) => pathname.startsWith("/admin/settings"),
   },
   {
-    description: "Pesan sambutan dan tombol inline bot",
-    href: "/admin/bot-message",
-    icon: Keyboard,
-    label: "Pesan bot",
-    match: (pathname: string) => pathname.startsWith("/admin/bot-message"),
-  },
-  {
-    description: "Poster channel dan tombol tonton sekarang",
-    href: "/admin/channel-broadcasts",
-    icon: Megaphone,
-    label: "Broadcast channel",
-    match: (pathname: string) => pathname.startsWith("/admin/channel-broadcasts"),
-  },
-  {
     description: "Daftarkan bot milik partner affiliate",
     href: "/admin/partners",
     icon: Link2,
     label: "Bot partner",
     match: (pathname: string) => pathname.startsWith("/admin/partners"),
+  },
+  {
+    description: "Pesan sambutan dan tombol inline bot",
+    href: "/admin/bot-message",
+    icon: Keyboard,
+    label: "Pesan bot",
+    match: (pathname: string) => pathname.startsWith("/admin/bot-message"),
   },
   {
     description: "Atur presentase komisi affiliate",
@@ -100,6 +93,13 @@ const items = [
     icon: Landmark,
     label: "Payment gateway",
     match: (pathname: string) => pathname.startsWith("/admin/payments"),
+  },
+  {
+    description: "Kelola sinkronisasi katalog",
+    href: "/admin/sync",
+    icon: RefreshCw,
+    label: "Sync",
+    match: (pathname: string) => pathname.startsWith("/admin/sync"),
   },
 ] as const;
 

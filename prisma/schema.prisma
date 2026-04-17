@@ -199,6 +199,7 @@ model TelegramBotSettings {
   affiliateGroupUrl   String   @db.Text
   channelLabel        String
   channelUrl          String   @db.Text
+  dramaAppUrl         String   @default("") @db.Text
   supportLabel        String
   supportUrl          String   @db.Text
   vipLabel            String
@@ -217,6 +218,7 @@ model PartnerBot {
   botName          String
   miniAppShortName String?
   defaultChannelUsername String?
+  dramaBotUrl      String?  @db.Text
   settingsOverrides Json?   @db.JsonB
   webhookSecret    String
   active           Boolean  @default(true)

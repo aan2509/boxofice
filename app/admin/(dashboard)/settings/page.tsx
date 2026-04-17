@@ -187,6 +187,13 @@ export default async function AdminSettingsPage({
                 type="url"
               />
               <Field
+                defaultValue={telegramSettings.dramaAppUrl ?? ""}
+                label="URL Mini App drama"
+                name="dramaAppUrl"
+                placeholder="https://t.me/LayarDramaBot?startapp=..."
+                type="url"
+              />
+              <Field
                 defaultValue={telegramSettings.miniAppShortName ?? ""}
                 label="Mini App shortname"
                 name="miniAppShortName"
@@ -237,6 +244,9 @@ export default async function AdminSettingsPage({
                 </p>
                 <p>
                   Main App URL: <span className="text-white">{telegramRuntime.publicAppUrl}</span>
+                </p>
+                <p>
+                  URL drama: <span className="text-white">{telegramSettings.dramaAppUrl || "Belum diatur"}</span>
                 </p>
                 <p>
                   Webhook URL: <span className="text-white">{webhookUrl}</span>

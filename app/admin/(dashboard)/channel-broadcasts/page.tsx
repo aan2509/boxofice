@@ -55,9 +55,8 @@ export default async function AdminChannelBroadcastPage({
         <p className="mt-3 max-w-4xl text-sm leading-7 text-neutral-400">
           Admin cukup menyiapkan satu broadcast, lalu pilih apakah konten itu
           dikirim dari bot utama, dari partner tertentu, atau keduanya
-          sekaligus. Setiap post sekarang hanya membawa satu tombol Tonton
-          Sekarang, sementara semua link di caption mengarah ke bot yang
-          mengirim broadcast tersebut.
+          sekaligus. Setiap post punya tombol utama Tonton Sekarang, lalu bisa
+          ditambah tombol Cari dan Nonton Drama sesuai bot yang mengirim.
         </p>
       </AdminSurface>
 

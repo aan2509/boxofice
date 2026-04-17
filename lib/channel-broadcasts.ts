@@ -9,12 +9,15 @@ import {
 import {
   buildTelegramBotChatUrlForUsername,
   buildTelegramMiniAppUrlForConfig,
+  buildTelegramSearchStartParam,
 } from "@/lib/telegram-miniapp";
 import { getHomepageBroadcastMovies } from "@/lib/movie-feeds";
 import { excludeBlockedMoviesWhere } from "@/lib/movie-visibility";
 
 const DEFAULT_BROADCAST_BUTTON_LABEL = "▶️ Tonton Sekarang";
 const MAX_CAPTION_LENGTH = 1024;
+const SEARCH_BUTTON_LABEL = "🔎 Cari Film";
+const DRAMA_BUTTON_LABEL = "🎭 Drama Series";
 const VIP_LINK_LABEL = "🛍️ Langganan VIP Sekarang";
 const GUIDE_LINK_LABEL = "📚 Panduan Pengguna";
 const SUPPORT_LINK_LABEL = "📞 Hubungi Admin Sekarang";
@@ -26,6 +29,9 @@ type PublishChannelBroadcastInput = {
   buttonLabel: string;
   caption: string;
   channelUsername: string;
+  dramaButtonUrl?: string | null;
+  includeDramaButton?: boolean;
+  includeSearchButton?: boolean;
   miniAppShortName?: string | null;
   movieId: string;
   ownerUserId?: string | null;
@@ -309,6 +315,13 @@ export async function publishChannelBroadcast(
     startParam,
   );
   const botChatUrl = buildTelegramBotChatUrlForUsername(input.botUsername);
+  const searchButtonUrl = buildTelegramMiniAppUrlForConfig(
+    {
+      botUsername: input.botUsername,
+      miniAppShortName: input.miniAppShortName ?? null,
+    },
+    buildTelegramSearchStartParam(),
+  );
   const captionEntities = buildCaptionTextLinkEntities(caption, botChatUrl);
 
   const inlineKeyboard: Array<Array<{ text: string; url: string }>> = [
@@ -319,6 +332,26 @@ export async function publishChannelBroadcast(
       },
     ],
   ];
+
+  const optionalButtons: Array<{ text: string; url: string }> = [];
+
+  if (input.includeSearchButton) {
+    optionalButtons.push({
+      text: SEARCH_BUTTON_LABEL,
+      url: searchButtonUrl,
+    });
+  }
+
+  if (input.includeDramaButton && input.dramaButtonUrl?.trim()) {
+    optionalButtons.push({
+      text: DRAMA_BUTTON_LABEL,
+      url: input.dramaButtonUrl.trim(),
+    });
+  }
+
+  if (optionalButtons.length) {
+    inlineKeyboard.push(optionalButtons);
+  }
 
   const draft = await prisma.channelBroadcast.create({
     data: {

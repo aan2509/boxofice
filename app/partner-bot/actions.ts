@@ -292,6 +292,8 @@ export async function publishPartnerChannelBroadcastAction(formData: FormData) {
   const movieId = readTextField(formData, "movieId");
   const caption = readTextField(formData, "caption");
   const buttonLabel = readTextField(formData, "buttonLabel");
+  const includeSearchButton = formData.get("includeSearchButton") === "on";
+  const includeDramaButton = formData.get("includeDramaButton") === "on";
   const pinMessage = formData.get("pinMessage") === "on";
 
   if (!partnerBotId) {
@@ -311,6 +313,7 @@ export async function publishPartnerChannelBroadcastAction(formData: FormData) {
       botName: true,
       botToken: true,
       botUsername: true,
+      dramaBotUrl: true,
       id: true,
       label: true,
       miniAppShortName: true,
@@ -345,6 +348,15 @@ export async function publishPartnerChannelBroadcastAction(formData: FormData) {
     return;
   }
 
+  if (includeDramaButton && !partnerBot.dramaBotUrl?.trim()) {
+    redirectToPartnerBroadcast({
+      botId: partnerBot.id,
+      message: "Isi dulu URL Mini App drama di pengaturan partner bot.",
+      status: "error",
+    });
+    return;
+  }
+
   let successMessage = "";
 
   try {
@@ -355,6 +367,11 @@ export async function publishPartnerChannelBroadcastAction(formData: FormData) {
       buttonLabel,
       caption,
       channelUsername,
+      dramaButtonUrl: includeDramaButton
+        ? partnerBot.dramaBotUrl?.trim() || null
+        : null,
+      includeDramaButton,
+      includeSearchButton,
       miniAppShortName: partnerBot.miniAppShortName,
       movieId,
       ownerUserId: partnerBot.ownerUserId,

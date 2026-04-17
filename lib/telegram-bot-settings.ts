@@ -23,6 +23,7 @@ export type TelegramBotSettingsSnapshot = {
   channelLabel: string;
   channelUrl: string;
   createdAt: Date;
+  dramaAppUrl: string;
   id: string;
   inlineButtons: TelegramInlineButtonConfig[];
   miniAppShortName: string | null;
@@ -268,6 +269,7 @@ function createDefaultTelegramBotSettings(): TelegramBotSettingsSnapshot {
     channelLabel: "🎥 Layar Box Office",
     channelUrl: buildTelegramBotChatUrlForUsername(runtime.botUsername),
     createdAt: new Date(0),
+    dramaAppUrl: "",
     id: "telegram-bot-settings-fallback",
     miniAppShortName: null,
     ownerTelegramId: getOptionalEnv("TELEGRAM_BOT_OWNER_TELEGRAM_ID"),
@@ -388,6 +390,7 @@ function withDerivedLinks(
       settings.channelUrl,
       buildTelegramBotChatUrlForUsername(runtime.botUsername),
     ),
+    dramaAppUrl: settings.dramaAppUrl?.trim() || "",
     openAppUrl: fillWebAppUrlFromRuntime(
       settings.openAppUrl,
       runtime.publicAppUrl,
@@ -438,6 +441,7 @@ export async function ensureTelegramBotSettings() {
       botUsername: defaults.botUsername,
       channelLabel: defaults.channelLabel,
       channelUrl: defaults.channelUrl,
+      dramaAppUrl: defaults.dramaAppUrl,
       inlineButtons: defaults.inlineButtons as unknown as object,
       miniAppShortName: defaults.miniAppShortName,
       ownerTelegramId: defaults.ownerTelegramId,

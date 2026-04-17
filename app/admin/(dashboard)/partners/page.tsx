@@ -169,6 +169,11 @@ export default async function AdminPartnerBotsPage({
               name="defaultChannelUsername"
               placeholder="@channelpartner atau https://t.me/channelpartner"
             />
+            <Field
+              label="URL Mini App drama"
+              name="dramaBotUrl"
+              placeholder="https://t.me/LayarDramaBot?startapp=..."
+            />
           </div>
 
           <label className="flex items-center gap-3 rounded-[18px] border border-white/10 bg-black/20 px-4 py-3 text-sm text-white">
@@ -234,6 +239,14 @@ export default async function AdminPartnerBotsPage({
                         : "belum diatur"}
                     </span>
                   </p>
+                  <p className="mt-1 text-xs text-neutral-500">
+                    URL drama:{" "}
+                    <span className="text-neutral-300">
+                      {partnerBot.dramaBotUrl?.trim()
+                        ? partnerBot.dramaBotUrl
+                        : "belum diatur"}
+                    </span>
+                  </p>
                 </div>
 
                 {partnerBot.links ? (
@@ -287,6 +300,12 @@ export default async function AdminPartnerBotsPage({
                         label="Channel default partner"
                         name="defaultChannelUsername"
                         placeholder="@channelpartner atau https://t.me/channelpartner"
+                      />
+                      <Field
+                        defaultValue={partnerBot.dramaBotUrl}
+                        label="URL Mini App drama"
+                        name="dramaBotUrl"
+                        placeholder="https://t.me/LayarDramaBot?startapp=..."
                       />
                     </div>
 

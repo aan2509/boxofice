@@ -107,8 +107,9 @@ export default async function PartnerBotBroadcastPage({
             </h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-neutral-400">
               Bot partner kamu bisa kirim poster, template pesan tetap, dan
-              satu tombol Tonton Sekarang ke channel sendiri. Semua link di
-              dalam pesan akan mengarah ke bot partner yang sedang dipilih.
+              tombol utama Tonton Sekarang plus tombol optional Cari dan
+              Nonton Drama ke channel sendiri. Semua link di dalam pesan akan
+              mengarah ke bot partner yang sedang dipilih.
             </p>
           </div>
 
