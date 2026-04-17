@@ -351,11 +351,15 @@ function isStale(date: Date | null | undefined, ttlMs: number) {
   return Date.now() - date.getTime() > ttlMs;
 }
 
-function hasCachedStream(cache: ExistingSyncedMovie["streamCache"]) {
+function hasCachedStream(
+  cache: ExistingSyncedMovie["streamCache"] | undefined,
+) {
   return Array.isArray(cache?.sources) && cache.sources.length > 0;
 }
 
-function isReusableStreamFresh(cache: ExistingSyncedMovie["streamCache"]) {
+function isReusableStreamFresh(
+  cache: ExistingSyncedMovie["streamCache"] | undefined,
+) {
   return Boolean(cache?.checkedAt) && !isStale(cache?.checkedAt, STREAM_REUSABLE_FRESH_MS);
 }
 
