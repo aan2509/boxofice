@@ -11,6 +11,7 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 const DEFAULT_BATCH_SIZE = 12;
 const MAX_BATCH_SIZE = 50;

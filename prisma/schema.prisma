@@ -257,6 +257,15 @@ model ChannelBroadcast {
   @@index([botKind, createdAt])
 }
 
+model CronJobCursor {
+  id        String   @id @default(uuid())
+  slug      String   @unique
+  state     Json     @db.JsonB
+  lastRunAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model VipProgramSettings {
   id                  String   @id @default(uuid())
   slug                String   @unique @default("default")
