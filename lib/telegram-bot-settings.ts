@@ -288,7 +288,7 @@ function createDefaultTelegramBotSettings(): TelegramBotSettingsSnapshot {
     vipUrl: `${runtime.publicAppUrl}/vip`,
     webhookSecret: null,
     welcomeMessage:
-      "👋 Hai {first_name}! Selamat datang di Layar Box Office.\n\n🎬 Nonton film box office langsung dari Telegram.\n🔥 Tanpa ribet • Full HD • Update setiap hari\n\n📌 Cara pakai:\n• Buka -> langsung mulai nonton\n• Cari Judul -> cari film favoritmu\n• Gabung Affiliate -> mulai bangun komisi dari Telegram\n• Layar Box Office -> lihat update kanal utama\n• Hubungi Admin -> kalau ada kendala\n• Join VIP -> buka akses premium\n\nPilih menu di bawah dan mulai sekarang!",
+      "👋 Hai {first_name}! Selamat datang di {bot_name}.\n\n🎬 Nonton film box office langsung dari Telegram.\n🔥 Tanpa ribet • Full HD • Update setiap hari\n\n📌 Cara pakai:\n• Buka -> langsung mulai nonton\n• Cari Judul -> cari film favoritmu\n• Gabung Affiliate -> mulai bangun komisi dari Telegram\n• {bot_name} -> lihat update kanal utama\n• Hubungi Admin -> kalau ada kendala\n• Join VIP -> buka akses premium\n\nPilih menu di bawah dan mulai sekarang!",
   } satisfies Omit<TelegramBotSettingsSnapshot, "inlineButtons">;
 
   return {
@@ -484,12 +484,21 @@ export async function getTelegramBotSettingsSafe(): Promise<TelegramBotSettingsR
 export function renderTelegramWelcomeMessage(
   template: string,
   input: {
+    botName?: string | null;
     firstName?: string | null;
     username?: string | null;
   },
 ) {
   return template
     .replace(/\{first_name\}/gi, input.firstName?.trim() || "teman")
+    .replace(
+      /\{bot_name\}|\{nama bot\}|\{nama_bot\}/gi,
+      input.botName?.trim() || "Layar Box Office",
+    )
+    .replace(
+      /\{brand_name\}|\{app_name\}/gi,
+      input.botName?.trim() || "Layar Box Office",
+    )
     .replace(
       /\{username\}/gi,
       input.username?.trim()

@@ -62,6 +62,7 @@ export default async function AdminBotMessagePage({
       <TelegramMessageEditor
         initialButtons={telegramSettings.inlineButtons}
         initialWelcomeMessage={telegramSettings.welcomeMessage}
+        previewBotName={telegramSettings.brandName}
         previewDescription={telegramSettings.seoDescription}
         previewHost={telegramRuntime.publicAppUrl.replace(/^https?:\/\//, "")}
         previewTitle={telegramSettings.seoTitle}

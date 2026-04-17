@@ -6,6 +6,10 @@ import { redirect } from "next/navigation";
 import { Prisma } from "@/app/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
+  buildLegacyInlineButtonsFromSettings,
+  type TelegramInlineButtonConfig,
+} from "@/lib/telegram-bot-settings";
+import {
   PARTNER_BOT_OVERRIDE_KEYS,
   type PartnerBotSettingsOverrides,
 } from "@/lib/telegram-partner-bots";
@@ -62,6 +66,46 @@ function validateOptionalUrl(value: string, label: string, botId: string) {
   }
 }
 
+function readPartnerInlineButtons(formData: FormData, botId: string) {
+  const buttons: TelegramInlineButtonConfig[] = [];
+
+  for (let index = 0; index < 10; index += 1) {
+    const buttonNumber = index + 1;
+    const label = readTextField(formData, `buttonLabel_${buttonNumber}`);
+    const url = readTextField(formData, `buttonUrl_${buttonNumber}`);
+    const enabled = formData.get(`buttonEnabled_${buttonNumber}`) === "on";
+
+    if (enabled && !label) {
+      redirectToPartnerSettings({
+        botId,
+        message: `Label tombol ${buttonNumber} wajib diisi jika tombol diaktifkan.`,
+        status: "error",
+      });
+    }
+
+    if (enabled && !url) {
+      redirectToPartnerSettings({
+        botId,
+        message: `URL tombol ${buttonNumber} wajib diisi jika tombol diaktifkan.`,
+        status: "error",
+      });
+    }
+
+    const normalizedUrl = url
+      ? (validateOptionalUrl(url, `URL tombol ${buttonNumber}`, botId) ?? "")
+      : "";
+
+    buttons.push({
+      enabled: enabled && Boolean(label && normalizedUrl),
+      id: `button${buttonNumber}`,
+      label,
+      url: normalizedUrl,
+    });
+  }
+
+  return buttons;
+}
+
 export async function savePartnerBotSettingsAction(formData: FormData) {
   const user = await requireUserSession();
   const partnerBotId = sanitizeRedirectBotId(formData.get("partnerBotId"));
@@ -80,6 +124,7 @@ export async function savePartnerBotSettingsAction(formData: FormData) {
     },
     select: {
       id: true,
+      settingsOverrides: true,
     },
   });
 
@@ -130,6 +175,130 @@ export async function savePartnerBotSettingsAction(formData: FormData) {
       message: "Pesan sambutan minimal 20 karakter.",
       status: "error",
     });
+  }
+
+  const inlineButtons = readPartnerInlineButtons(formData, partnerBotId);
+  const hasActiveButton = inlineButtons.some((button) => button.enabled);
+
+  if (!hasActiveButton) {
+    redirectToPartnerSettings({
+      botId: partnerBotId,
+      message: "Minimal aktifkan satu tombol inline.",
+      status: "error",
+    });
+  }
+
+  const existingOverrides =
+    partnerBot.settingsOverrides &&
+    typeof partnerBot.settingsOverrides === "object" &&
+    !Array.isArray(partnerBot.settingsOverrides)
+      ? (partnerBot.settingsOverrides as Record<string, unknown>)
+      : {};
+
+  const effectiveLegacy = buildLegacyInlineButtonsFromSettings({
+    affiliateGroupLabel:
+      overrides.affiliateGroupLabel ??
+      (typeof existingOverrides.affiliateGroupLabel === "string"
+        ? existingOverrides.affiliateGroupLabel
+        : "🏠 Group Affiliate"),
+    affiliateGroupUrl:
+      overrides.affiliateGroupUrl ??
+      (typeof existingOverrides.affiliateGroupUrl === "string"
+        ? existingOverrides.affiliateGroupUrl
+        : ""),
+    affiliateLabel:
+      overrides.affiliateLabel ??
+      (typeof existingOverrides.affiliateLabel === "string"
+        ? existingOverrides.affiliateLabel
+        : "💰 Gabung Affiliate"),
+    affiliateUrl:
+      overrides.affiliateUrl ??
+      (typeof existingOverrides.affiliateUrl === "string"
+        ? existingOverrides.affiliateUrl
+        : ""),
+    channelLabel:
+      overrides.channelLabel ??
+      (typeof existingOverrides.channelLabel === "string"
+        ? existingOverrides.channelLabel
+        : "🎥 Layar Box Office"),
+    channelUrl:
+      overrides.channelUrl ??
+      (typeof existingOverrides.channelUrl === "string"
+        ? existingOverrides.channelUrl
+        : ""),
+    openAppLabel:
+      overrides.openAppLabel ??
+      (typeof existingOverrides.openAppLabel === "string"
+        ? existingOverrides.openAppLabel
+        : "🎬 Buka"),
+    openAppUrl:
+      overrides.openAppUrl ??
+      (typeof existingOverrides.openAppUrl === "string"
+        ? existingOverrides.openAppUrl
+        : ""),
+    searchLabel:
+      overrides.searchLabel ??
+      (typeof existingOverrides.searchLabel === "string"
+        ? existingOverrides.searchLabel
+        : "🔎 Cari Judul"),
+    searchUrl:
+      overrides.searchUrl ??
+      (typeof existingOverrides.searchUrl === "string"
+        ? existingOverrides.searchUrl
+        : ""),
+    supportLabel:
+      overrides.supportLabel ??
+      (typeof existingOverrides.supportLabel === "string"
+        ? existingOverrides.supportLabel
+        : "📞 Hubungi Admin"),
+    supportUrl:
+      overrides.supportUrl ??
+      (typeof existingOverrides.supportUrl === "string"
+        ? existingOverrides.supportUrl
+        : ""),
+    vipLabel:
+      overrides.vipLabel ??
+      (typeof existingOverrides.vipLabel === "string"
+        ? existingOverrides.vipLabel
+        : "💎 Join VIP"),
+    vipUrl:
+      overrides.vipUrl ??
+      (typeof existingOverrides.vipUrl === "string"
+        ? existingOverrides.vipUrl
+        : ""),
+  });
+
+  overrides.inlineButtons = inlineButtons;
+  if (inlineButtons[0]) {
+    overrides.openAppLabel = inlineButtons[0].label || effectiveLegacy[0].label;
+    overrides.openAppUrl = inlineButtons[0].url || effectiveLegacy[0].url;
+  }
+  if (inlineButtons[1]) {
+    overrides.searchLabel = inlineButtons[1].label || effectiveLegacy[1].label;
+    overrides.searchUrl = inlineButtons[1].url || effectiveLegacy[1].url;
+  }
+  if (inlineButtons[2]) {
+    overrides.affiliateLabel =
+      inlineButtons[2].label || effectiveLegacy[2].label;
+    overrides.affiliateUrl = inlineButtons[2].url || effectiveLegacy[2].url;
+  }
+  if (inlineButtons[3]) {
+    overrides.affiliateGroupLabel =
+      inlineButtons[3].label || effectiveLegacy[3].label;
+    overrides.affiliateGroupUrl =
+      inlineButtons[3].url || effectiveLegacy[3].url;
+  }
+  if (inlineButtons[4]) {
+    overrides.channelLabel = inlineButtons[4].label || effectiveLegacy[4].label;
+    overrides.channelUrl = inlineButtons[4].url || effectiveLegacy[4].url;
+  }
+  if (inlineButtons[5]) {
+    overrides.supportLabel = inlineButtons[5].label || effectiveLegacy[5].label;
+    overrides.supportUrl = inlineButtons[5].url || effectiveLegacy[5].url;
+  }
+  if (inlineButtons[6]) {
+    overrides.vipLabel = inlineButtons[6].label || effectiveLegacy[6].label;
+    overrides.vipUrl = inlineButtons[6].url || effectiveLegacy[6].url;
   }
 
   await prisma.partnerBot.update({

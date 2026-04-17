@@ -14,6 +14,7 @@ type InlineButtonInput = {
 };
 
 type TelegramMessageEditorProps = {
+  previewBotName: string;
   initialButtons: InlineButtonInput[];
   initialWelcomeMessage: string;
   previewDescription: string;
@@ -41,6 +42,7 @@ function PreviewButton({
 }
 
 export function TelegramMessageEditor({
+  previewBotName,
   initialButtons,
   initialWelcomeMessage,
   previewDescription,
@@ -111,7 +113,8 @@ export function TelegramMessageEditor({
             />
             <p className="mt-2 text-sm leading-6 text-neutral-400">
               Pakai placeholder <code className="rounded bg-black/30 px-1.5 py-0.5 text-neutral-200">{`{first_name}`}</code> atau{" "}
-              <code className="rounded bg-black/30 px-1.5 py-0.5 text-neutral-200">{`{username}`}</code>.
+              <code className="rounded bg-black/30 px-1.5 py-0.5 text-neutral-200">{`{username}`}</code> atau{" "}
+              <code className="rounded bg-black/30 px-1.5 py-0.5 text-neutral-200">{`{bot_name}`}</code>.
             </p>
           </div>
 
@@ -206,8 +209,12 @@ export function TelegramMessageEditor({
         <div className="mt-4 space-y-3 rounded-[24px] border border-white/10 bg-[#1f2c3a] p-4">
           <div className="rounded-[18px] bg-[#2c3947] p-4 text-sm leading-7 text-white">
             {welcomeMessage
-              .replace(/\{first_name\}/gi, "Aan Hendri")
-              .replace(/\{username\}/gi, "@aanhendri")}
+              .replace(/\{first_name\}/gi, "Zen Kusuma")
+              .replace(/\{username\}/gi, "@zenkusuma")
+              .replace(
+                /\{bot_name\}|\{nama bot\}|\{nama_bot\}|\{brand_name\}|\{app_name\}/gi,
+                previewBotName,
+              )}
           </div>
 
           {previewRows.length > 0 ? (

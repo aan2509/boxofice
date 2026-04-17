@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import {
   buildLegacyInlineButtonsFromSettings,
   getTelegramBotSettingsSafe,
+  type TelegramInlineButtonConfig,
   type TelegramBotSettingsSnapshot,
 } from "@/lib/telegram-bot-settings";
 import {
@@ -34,6 +35,7 @@ export type PartnerBotSettingsOverrides = Partial<
     | "welcomeMessage"
   >
 > & {
+  inlineButtons?: TelegramInlineButtonConfig[];
   settingsLabel?: string;
 };
 
@@ -158,6 +160,33 @@ export function sanitizePartnerBotSettingsOverrides(
     sanitized[key] = trimmedValue;
   }
 
+  if (Array.isArray(input.inlineButtons)) {
+    sanitized.inlineButtons = input.inlineButtons
+      .map((button, index) => {
+        if (!button || typeof button !== "object" || Array.isArray(button)) {
+          return null;
+        }
+
+        const item = button as Record<string, unknown>;
+        const label =
+          typeof item.label === "string" ? item.label.trim() : "";
+        const url = typeof item.url === "string" ? item.url.trim() : "";
+        const enabled =
+          typeof item.enabled === "boolean" ? item.enabled : false;
+
+        return {
+          enabled: enabled && Boolean(label && url),
+          id:
+            typeof item.id === "string" && item.id.trim()
+              ? item.id.trim()
+              : `button${index + 1}`,
+          label,
+          url,
+        } satisfies TelegramInlineButtonConfig;
+      })
+      .filter((button): button is TelegramInlineButtonConfig => button !== null);
+  }
+
   return sanitized;
 }
 
@@ -184,22 +213,29 @@ export function resolvePartnerBotSettings(
     vipLabel: overrides.vipLabel ?? globalSettings.vipLabel,
     vipUrl: overrides.vipUrl ?? globalSettings.vipUrl,
   };
-  const partnerInlineButtons = buildLegacyInlineButtonsFromSettings(
-    effectiveLegacySettings,
-  );
+  const partnerInlineButtons =
+    overrides.inlineButtons && overrides.inlineButtons.length > 0
+      ? globalSettings.inlineButtons.map((button, index) => {
+          const overrideButton = overrides.inlineButtons?.[index];
+          return overrideButton ?? button;
+        })
+      : buildLegacyInlineButtonsFromSettings(effectiveLegacySettings);
 
   return {
     overrides,
     settings: {
       ...globalSettings,
       ...effectiveLegacySettings,
-      inlineButtons: globalSettings.inlineButtons.map((button, index) =>
-        index < partnerInlineButtons.length &&
-        partnerInlineButtons[index] &&
-        index < 7
-          ? partnerInlineButtons[index]
-          : button,
-      ),
+      inlineButtons:
+        overrides.inlineButtons && overrides.inlineButtons.length > 0
+          ? partnerInlineButtons
+          : globalSettings.inlineButtons.map((button, index) =>
+              index < partnerInlineButtons.length &&
+              partnerInlineButtons[index] &&
+              index < 7
+                ? partnerInlineButtons[index]
+                : button,
+            ),
       welcomeMessage:
         overrides.welcomeMessage ?? globalSettings.welcomeMessage,
     },

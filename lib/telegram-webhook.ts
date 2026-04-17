@@ -168,6 +168,7 @@ export function buildTelegramInlineKeyboard(
 }
 
 export async function sendTelegramWelcomeMessage(input: {
+  botName?: string;
   botToken: string;
   extraRows?: TelegramInlineButton[][];
   message: TelegramStartMessage;
@@ -179,6 +180,7 @@ export async function sendTelegramWelcomeMessage(input: {
   }
 
   const text = renderTelegramWelcomeMessage(input.settings.welcomeMessage, {
+    botName: input.botName,
     firstName: input.message.firstName,
     username: input.message.username,
   });

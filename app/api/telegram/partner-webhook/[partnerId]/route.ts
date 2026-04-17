@@ -118,6 +118,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     : undefined;
 
   await sendTelegramWelcomeMessage({
+    botName: partnerBot.label?.trim() || partnerBot.botName,
     botToken: partnerBot.botToken,
     extraRows,
     message: {

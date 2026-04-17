@@ -70,6 +70,7 @@ export async function POST(request: NextRequest) {
 
   if (typeof chatId === "number") {
     await sendTelegramWelcomeMessage({
+      botName: botSettings.settings.brandName,
       botToken: botSettings.runtime.botToken,
       message: {
         chatId,
