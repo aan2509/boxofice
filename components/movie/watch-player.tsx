@@ -1188,26 +1188,26 @@ export function WatchPlayer({
           </div>
         ) : null}
         {showRotateGate && !previewEnded ? (
-          <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/72 px-3">
-            <div className="w-full max-w-[19rem] rounded-[18px] border border-white/10 bg-[linear-gradient(180deg,rgba(20,20,20,0.96),rgba(8,8,8,0.98))] p-3.5 text-center shadow-[0_24px_80px_rgba(0,0,0,0.55)] backdrop-blur sm:max-w-[20rem]">
+          <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/72 px-2.5">
+            <div className="w-full max-w-[17.25rem] rounded-[16px] border border-white/10 bg-[linear-gradient(180deg,rgba(20,20,20,0.96),rgba(8,8,8,0.98))] p-3 text-center shadow-[0_24px_80px_rgba(0,0,0,0.55)] backdrop-blur sm:max-w-[18rem]">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-200">
                 Sebelum mulai nonton
               </p>
-              <h3 className="mt-2.5 text-lg font-bold text-white">
+              <h3 className="mt-2 text-base font-bold text-white">
                 Aktifkan auto-rotate bila bisa
               </h3>
-              <p className="mt-2 text-sm leading-5 text-neutral-300">
+              <p className="mt-1.5 text-[13px] leading-5 text-neutral-300">
                 Tombol fullscreen tidak memutar layar otomatis. Jika ingin layar landscape, aktifkan auto-rotate atau putar HP sendiri. Kamu tetap bisa lanjut nonton sekarang.
               </p>
               {manualSources.length ? (
-                <div className="mt-3 rounded-[14px] border border-white/8 bg-white/[0.04] p-2.5 text-left">
+                <div className="mt-2.5 rounded-[12px] border border-white/8 bg-white/[0.04] p-2 text-left">
                   <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-neutral-400">
                     Jika Auto tidak jalan
                   </p>
-                  <p className="mt-1 text-xs leading-5 text-neutral-300">
+                  <p className="mt-1 text-[11px] leading-4 text-neutral-300">
                     Coba pilih resolusi manual di bawah ini.
                   </p>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
                     {manualSources.map((source) => (
                       <button
                         key={`rotate-gate-${source.url}`}
@@ -1218,7 +1218,7 @@ export function WatchPlayer({
                           dismissedRotateSourceUrlRef.current = source.url;
                           setShowRotateGate(false);
                         }}
-                        className="rounded-full border border-white/10 bg-white/8 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-white/15"
+                        className="rounded-full border border-white/10 bg-white/8 px-2.5 py-1 text-[11px] font-semibold text-white transition hover:bg-white/15"
                       >
                         {source.label}
                       </button>
@@ -1226,7 +1226,7 @@ export function WatchPlayer({
                   </div>
                 </div>
               ) : null}
-              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <div className="mt-2.5 grid grid-cols-2 gap-2">
                 <Button
                   type="button"
                   variant="secondary"
@@ -1236,7 +1236,7 @@ export function WatchPlayer({
                     dismissedRotateSourceUrlRef.current = selectedSourceUrl;
                     setShowRotateGate(false);
                   }}
-                  className="h-10 border border-white/10 bg-white/10 text-white hover:bg-white/15"
+                  className="h-9 border border-white/10 bg-white/10 px-2 text-[12px] text-white hover:bg-white/15"
                 >
                   Lanjutkan
                 </Button>
@@ -1249,7 +1249,7 @@ export function WatchPlayer({
                     setShowRotateGate(false);
                     void toggleFullscreen();
                   }}
-                  className="h-10 bg-red-600 text-white hover:bg-red-500"
+                  className="h-9 bg-red-600 px-2 text-[12px] text-white hover:bg-red-500"
                 >
                   Buka fullscreen
                 </Button>
@@ -1259,28 +1259,28 @@ export function WatchPlayer({
         ) : null}
         {previewEnded && !isVipActive && previewLimitSeconds > 0 ? (
           <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/78 px-4">
-            <div className="w-full max-w-[19.5rem] rounded-[20px] border border-white/10 bg-[linear-gradient(180deg,rgba(20,20,20,0.96),rgba(8,8,8,0.98))] p-4 text-center shadow-[0_24px_80px_rgba(0,0,0,0.55)] backdrop-blur sm:max-w-[22rem]">
+            <div className="w-full max-w-[17.5rem] rounded-[18px] border border-white/10 bg-[linear-gradient(180deg,rgba(20,20,20,0.96),rgba(8,8,8,0.98))] p-3.5 text-center shadow-[0_24px_80px_rgba(0,0,0,0.55)] backdrop-blur sm:max-w-[18.5rem]">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-200">
                 Preview selesai
               </p>
-              <h3 className="mt-2.5 text-xl font-bold text-white">
+              <h3 className="mt-2 text-lg font-bold text-white">
                 {stream?.paywallTitle ?? "Lanjutkan dengan VIP"}
               </h3>
-              <p className="mt-2 text-sm leading-5 text-neutral-300">
+              <p className="mt-1.5 text-[13px] leading-5 text-neutral-300">
                 {stream?.paywallDescription ??
                   "Upgrade VIP untuk lanjut nonton tanpa batas dan buka semua katalog premium."}
               </p>
-              <p className="mt-2 text-[11px] leading-4 text-neutral-500">
+              <p className="mt-1.5 text-[11px] leading-4 text-neutral-500">
                 Batas preview untuk akun gratis: {formatPreviewLimit(previewLimitSeconds)}
               </p>
-              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <div className="mt-2.5 grid grid-cols-2 gap-2">
                 <Button
                   type="button"
                   variant="secondary"
                   size="sm"
                   data-haptic="light"
                   onClick={closePlayer}
-                  className="h-10 border border-white/10 bg-white/10 text-white hover:bg-white/15"
+                  className="h-9 border border-white/10 bg-white/10 px-2 text-[12px] text-white hover:bg-white/15"
                 >
                   Kembali ke detail
                 </Button>
@@ -1289,7 +1289,7 @@ export function WatchPlayer({
                   type="button"
                   size="sm"
                   data-haptic="medium"
-                  className="h-10 bg-red-600 text-white hover:bg-red-500"
+                  className="h-9 bg-red-600 px-2 text-[12px] text-white hover:bg-red-500"
                 >
                   <a href={stream?.upgradeUrl ?? "/vip"}>
                     {stream?.upgradeLabel ?? "Buka VIP"}
