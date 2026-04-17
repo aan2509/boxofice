@@ -554,9 +554,10 @@ export async function syncMovieFeed(
           true
         >;
         const existing = existingBySource.get(movie.sourceUrl);
+        const hasAnyCachedStream = hasCachedStream(existing?.streamCache);
         const hasReusableStream =
           existing?.[config.dbField] === true &&
-          hasCachedStream(existing.streamCache) &&
+          hasAnyCachedStream &&
           isReusableStreamFresh(existing.streamCache);
         const shouldFetchEnrichment =
           !hasReusableStream ||
@@ -588,6 +589,26 @@ export async function syncMovieFeed(
 
         if (!hasPlayableStream) {
           summary.skippedUnsupported += 1;
+
+          if (existing && hasAnyCachedStream) {
+            if (hasMovieChanged(existing, nextData, config.dbField)) {
+              await prisma.movie.update({
+                where: {
+                  sourceUrl: movie.sourceUrl,
+                },
+                data: {
+                  ...nextData,
+                  ...feedFlag,
+                },
+              });
+              summary.updated += 1;
+              summary.upserted += 1;
+              return;
+            }
+
+            summary.unchanged += 1;
+            return;
+          }
 
           if (existing?.[config.dbField]) {
             await prisma.movie.update({

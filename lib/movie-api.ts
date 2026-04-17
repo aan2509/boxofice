@@ -6,6 +6,7 @@ const BASE_URL = "https://api.sonzaix.indevs.in";
 type JsonRecord = Record<string, unknown>;
 const API_REQUEST_TIMEOUT_MS = 10000;
 const MEDIA_PROBE_TIMEOUT_MS = 8000;
+const MAX_STREAM_CHAIN_DEPTH = 4;
 
 export type NormalizedMovieMetadata = {
   sourceUrl: string;
@@ -398,6 +399,51 @@ function normalizeStreamResponse(
   };
 }
 
+async function resolveStreamResponseChain(
+  sourceUrl: string,
+  options: { revalidate?: number } = {},
+): Promise<SanitizedStreamResponse> {
+  const visited = new Set<string>();
+  let currentUrl = sourceUrl;
+  let lastResponse: SanitizedStreamResponse | null = null;
+  let lastResolvedFrom = sourceUrl;
+
+  for (let depth = 0; depth < MAX_STREAM_CHAIN_DEPTH; depth += 1) {
+    if (visited.has(currentUrl)) {
+      break;
+    }
+
+    visited.add(currentUrl);
+
+    const response = await fetchStream(currentUrl, options);
+    lastResponse = response;
+    lastResolvedFrom = currentUrl;
+
+    if (response.sources.length > 0) {
+      return {
+        ...response,
+        resolvedFrom: currentUrl,
+      };
+    }
+
+    const nextUrl = response.iframe?.trim();
+
+    if (!nextUrl || nextUrl === currentUrl) {
+      break;
+    }
+
+    currentUrl = nextUrl;
+  }
+
+  return {
+    ...(lastResponse ?? {
+      originalUrl: sourceUrl,
+      sources: [],
+    }),
+    resolvedFrom: lastResolvedFrom,
+  };
+}
+
 function isLikelyBadMediaContentType(contentType: string) {
   const lowered = contentType.toLowerCase();
 
@@ -450,20 +496,6 @@ async function fetchForMediaProbe(url: string, init: RequestInit = {}) {
   }
 }
 
-function firstPlaylistMediaUrl(playlist: string, playlistUrl: string) {
-  for (const line of playlist.split(/\r?\n/)) {
-    const trimmed = line.trim();
-
-    if (!trimmed || trimmed.startsWith("#")) {
-      continue;
-    }
-
-    return new URL(trimmed, playlistUrl).toString();
-  }
-
-  return null;
-}
-
 async function isPlayableMediaUrl(url: string, depth = 0): Promise<boolean> {
   if (depth > 2) {
     return false;
@@ -480,17 +512,7 @@ async function isPlayableMediaUrl(url: string, depth = 0): Promise<boolean> {
   if (isPlaylist || contentType.toLowerCase().includes("mpegurl")) {
     const playlist = await response.text();
 
-    if (!playlist.includes("#EXTM3U")) {
-      return false;
-    }
-
-    const firstMediaUrl = firstPlaylistMediaUrl(playlist, url);
-
-    if (!firstMediaUrl) {
-      return false;
-    }
-
-    return isPlayableMediaUrl(firstMediaUrl, depth + 1);
+    return playlist.includes("#EXTM3U");
   }
 
   if (
@@ -620,7 +642,7 @@ export async function fetchPlayableStream(
 
   if (!shouldResolveDetailBeforeStream(sourceUrl)) {
     try {
-      initialStream = await fetchStream(sourceUrl, options);
+      initialStream = await resolveStreamResponseChain(sourceUrl, options);
     } catch (error) {
       initialError = error;
     }
@@ -653,7 +675,7 @@ export async function fetchPlayableStream(
       : new MovieApiError("LK21 stream source is unavailable");
   }
 
-  const playerStream = await fetchStream(detail.streams, options);
+  const playerStream = await resolveStreamResponseChain(detail.streams, options);
 
   if (playerStream.sources.length === 0) {
     return initialStream

@@ -348,6 +348,7 @@ export async function hideRedirectMoviesFromAdmin(formData: FormData) {
 export async function refreshWebCacheFromAdmin(formData: FormData) {
   await requireAdminSession();
   const redirectBasePath = resolveRedirectTarget(formData, "/admin/sync");
+  let redirectPath = `${redirectBasePath}?webCache=ok`;
 
   try {
     revalidatePath("/", "layout");
@@ -359,19 +360,16 @@ export async function refreshWebCacheFromAdmin(formData: FormData) {
     revalidatePath("/movie/source");
     revalidatePath("/admin");
     revalidatePath("/admin/sync");
-
-    redirect(
-      `${redirectBasePath}?webCache=ok&message=${encodeURIComponent(
-        "Cache web berhasil direfresh. Halaman user akan mengikuti data terbaru setelah reload berikutnya.",
-      )}`,
-    );
+    redirectPath = `${redirectBasePath}?webCache=ok&message=${encodeURIComponent(
+      "Cache web berhasil direfresh. Halaman user akan mengikuti data terbaru setelah reload berikutnya.",
+    )}`;
   } catch (error) {
-    redirect(
-      `${redirectBasePath}?webCache=error&message=${encodeURIComponent(
-        error instanceof Error ? error.message : "Gagal refresh cache web",
-      )}`,
-    );
+    redirectPath = `${redirectBasePath}?webCache=error&message=${encodeURIComponent(
+      error instanceof Error ? error.message : "Gagal refresh cache web",
+    )}`;
   }
+
+  redirect(redirectPath);
 }
 
 export async function auditCatalogFromAdmin(formData: FormData) {
