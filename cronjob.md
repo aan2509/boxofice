@@ -448,3 +448,199 @@ Dengan pola ini:
 - Cron tidak membuat upstream lebih kuat. Cron hanya mengotomatiskan pemicu.
 - Kalau upstream sedang down, cron tetap bisa gagal.
 - Karena itu pendekatan terbaik untuk BoxOffice sekarang adalah **cursor per target**, bukan satu request besar 1-50 page.
+
+## Template cron-job.org siap copy
+
+Bagian ini dibuat supaya kamu tinggal salin ke `cron-job.org`.
+
+Asumsi:
+
+- domain app kamu: `https://layarbox.app`
+- `CRON_SECRET`: `Rahasia25`
+- sync dijalankan dengan mode cursor
+- audit dijalankan sekali sehari
+
+### Header yang dipakai semua job
+
+```txt
+Authorization: Bearer Rahasia25
+```
+
+## Opsi paling aman
+
+Pola ini membagi 3 target ke interval berbeda supaya tidak nabrak bersamaan:
+
+- `home` setiap 3 menit
+- `popular` setiap 3 menit, offset 1 menit
+- `new` setiap 3 menit, offset 2 menit
+
+Dengan pola ini:
+
+- page akan jalan terus per cursor
+- beban lebih rata
+- tidak perlu bikin 50 job manual
+
+Kalau tujuanmu memang hanya sync malam, kamu bisa aktifkan job ini hanya di jam malam. Kalau mau lebih sederhana, biarkan aktif terus, karena cursor akan tetap melingkar dari page 1 ke 50 lalu kembali lagi.
+
+## Job 1 - Sync Home Cursor
+
+- Title:
+
+```txt
+BoxOffice Sync Home Cursor
+```
+
+- URL:
+
+```txt
+https://layarbox.app/api/cron/sync-nightly?mode=cursor&target=home&slug=sync-home&fromPage=1&toPage=50
+```
+
+- Method:
+
+```txt
+GET
+```
+
+- Header:
+
+```txt
+Authorization: Bearer Rahasia25
+```
+
+- Schedule:
+
+Kalau timezone `cron-job.org` kamu diatur ke `Asia/Jakarta`:
+
+```txt
+Setiap 3 menit
+```
+
+Kalau kamu pakai mode cron expression:
+
+```txt
+*/3 * * * *
+```
+
+## Job 2 - Sync Popular Cursor
+
+- Title:
+
+```txt
+BoxOffice Sync Popular Cursor
+```
+
+- URL:
+
+```txt
+https://layarbox.app/api/cron/sync-nightly?mode=cursor&target=popular&slug=sync-popular&fromPage=1&toPage=50
+```
+
+- Method:
+
+```txt
+GET
+```
+
+- Header:
+
+```txt
+Authorization: Bearer Rahasia25
+```
+
+- Schedule:
+
+Kalau bisa pilih menit tertentu, offset 1 menit dari Home:
+
+```txt
+1-59/3 * * * *
+```
+
+## Job 3 - Sync New Cursor
+
+- Title:
+
+```txt
+BoxOffice Sync New Cursor
+```
+
+- URL:
+
+```txt
+https://layarbox.app/api/cron/sync-nightly?mode=cursor&target=new&slug=sync-new&fromPage=1&toPage=50
+```
+
+- Method:
+
+```txt
+GET
+```
+
+- Header:
+
+```txt
+Authorization: Bearer Rahasia25
+```
+
+- Schedule:
+
+Offset 2 menit dari Home:
+
+```txt
+2-59/3 * * * *
+```
+
+## Job 4 - Audit All
+
+- Title:
+
+```txt
+BoxOffice Audit All
+```
+
+- URL:
+
+```txt
+https://layarbox.app/api/cron/audit?target=all&batchSize=12&autoHide=true
+```
+
+- Method:
+
+```txt
+GET
+```
+
+- Header:
+
+```txt
+Authorization: Bearer Rahasia25
+```
+
+- Schedule:
+
+Kalau timezone di `Asia/Jakarta`, jam 12 siang:
+
+```txt
+0 12 * * *
+```
+
+Kalau timezone masih UTC:
+
+```txt
+0 5 * * *
+```
+
+## Kalau kamu ingin sync hanya malam hari
+
+Kalau kamu benar-benar ingin sync hanya sekitar tengah malam sampai dini hari, pakai pendekatan ini:
+
+- `home`: aktif sekitar 00:00 - 02:30 WIB
+- `popular`: aktif sekitar 00:01 - 02:31 WIB
+- `new`: aktif sekitar 00:02 - 02:32 WIB
+
+Tetapi karena pengaturan window waktu di `cron-job.org` lebih ribet daripada recurring biasa, praktik yang paling simpel biasanya:
+
+- biarkan 3 job cursor tetap aktif sepanjang hari
+- audit tetap jalan sekali di jam 12 siang
+
+Dengan begitu katalog akan selalu berputar dan tetap fresh, tanpa harus mengurus window malam manual.

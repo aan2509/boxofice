@@ -1191,21 +1191,12 @@ export function WatchPlayer({
           <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/72 px-2.5">
             <div className="w-full max-w-[17.25rem] rounded-[16px] border border-white/10 bg-[linear-gradient(180deg,rgba(20,20,20,0.96),rgba(8,8,8,0.98))] p-3 text-center shadow-[0_24px_80px_rgba(0,0,0,0.55)] backdrop-blur sm:max-w-[18rem]">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-200">
-                Sebelum mulai nonton
-              </p>
-              <h3 className="mt-2 text-base font-bold text-white">
-                Aktifkan auto-rotate bila bisa
-              </h3>
-              <p className="mt-1.5 text-[13px] leading-5 text-neutral-300">
-                Tombol fullscreen tidak memutar layar otomatis. Jika ingin layar landscape, aktifkan auto-rotate atau putar HP sendiri. Kamu tetap bisa lanjut nonton sekarang.
+                Aktifkan Auto Rotate
               </p>
               {manualSources.length ? (
                 <div className="mt-2.5 rounded-[12px] border border-white/8 bg-white/[0.04] p-2 text-left">
-                  <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-neutral-400">
-                    Jika Auto tidak jalan
-                  </p>
                   <p className="mt-1 text-[11px] leading-4 text-neutral-300">
-                    Coba pilih resolusi manual di bawah ini.
+                    Pilih resolusi di bawah ini.
                   </p>
                   <div className="mt-1.5 flex flex-wrap gap-1.5">
                     {manualSources.map((source) => (
